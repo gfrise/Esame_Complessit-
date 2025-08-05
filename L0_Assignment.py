@@ -1,7 +1,7 @@
 import numpy as np, matplotlib.pyplot as plt
 from scipy.stats import t,pareto
 
-N, i, M, SD, df, alpha = 10**4, 1000, 3, 0.4, 5, 1.5
+N, i, M, SD, df, alpha = 10**3, 1000, 3, 0.4, 5, 1.5
 
 def OU(N,M,SD,theta,dt=1):
     x = np.empty(N)
