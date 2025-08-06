@@ -1,13 +1,13 @@
 import numpy as np, matplotlib.pyplot as plt
 import random
 
-n, t, tmax, m, y = 10**4, 100, 50, 100, 0.1
+n, t, tmax, m, y = 500, 100, 50, 100, 0.1
 dt, nn = 1/t, n*t
 lag = np.arange(0,tmax,dt)
 
 def AC(x,t):
     m1, m2, s1, s2, cov = 0,0,0,0,0
-    rng = n-tmax
+    rng = n-tmax #len(x)
 
     for i in range(rng):
         m1+=x[i]
@@ -37,6 +37,7 @@ for k in range(m):
     z = x[::t]
     w = z.copy()
 
+    #    _x = np.random.choice(x_,len(x_),replace=True)
     for i in range(1,n):
         pos=random.randrange(n)
         temp = w[i]
@@ -53,16 +54,14 @@ for k in range(m):
 
 for t in range(tmax):
     ms[t]/=m
-    sds[t]/=sds[t]/m-ms[t]**2
-    sds[t]=np.sqrt(sds[t])
+    sds[t]=(sds[t]/m-ms[t]**2)**0.5
     mshf[t]/=m
-    sdshf[t]/=sdshf[t]/m-mshf[t]**2
-    sdshf[t]=np.sqrt(sdshf[t])
+    sdshf[t]=(sdshf[t]/m-mshf[t]**2)**0.5
 
-x_plot = np.arange(tmax)
+x_plot = np.arange(tmax)*dt
 plt.figure()
-plt.errorbar(x_plot, ms, yerr=sds, fmt='.', capsize=5, label='Autocorr. originale')
-plt.errorbar(x_plot, mshf, yerr=sdshf, fmt='.', capsize=5, label='Autocorr. shufflata')
+plt.errorbar(x_plot, ms, yerr=sds, c='black', fmt='.', capsize=5, label='Autocorr. originale')
+plt.errorbar(x_plot, mshf, yerr=sdshf, c='red', fmt='.', capsize=5, label='Autocorr. shufflata')
 plt.yscale('log')
 plt.xlabel('Lag')
 plt.ylabel('Autocorrelazione')
