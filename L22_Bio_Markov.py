@@ -1,8 +1,7 @@
 from Bio import SeqIO
 import numpy as np
 
-# Carica il file FASTA
-fasta_file = "NC_00195.fasta"  # Cambia con il tuo path
+fasta_file = "NC_00195.fasta" 
 
 for record in SeqIO.parse(fasta_file, "fasta"):
     print("ID:", record.id)

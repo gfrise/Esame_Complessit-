@@ -1,7 +1,16 @@
 import numpy as np, matplotlib.pyplot as plt
 import random
 
-n, t, tmax, m, y = 500, 100, 50, 100, 0.1
+# Compito 1: create_OU.c
+# processo di Ornstein-Uhlenbeck a partire dalla sua equazione di Langevin. 
+# Il codice deve anche prevedere la costruzione della pdf (area normalizzata ad 1) e funzione di autocorrelazione
+# i parametri rilevanti della simulazione tramite file 
+# Iterate il processo M = 100 volte e costruite l’istogramma e 
+# l’autocorrelazione mediati su queste M iterazioni,
+# mostrando la standard deviation come barra d’errore.
+#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=c, poniamo c=1
+
+n, t, tmax, m, y = 300, 100, 50, 100, 0.1
 dt, nn = 1/t, n*t
 lag = np.arange(0,tmax,dt)
 
