@@ -2,14 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
-# processo di Ornstein-Uhlenbeck a partire dalla sua equazione di Langevin.  
-# costruzione della pdf (area normalizzata ad 1) e funzione di autocorrelazione
-# i parametri rilevanti della simulazione tramite file 
-# Iterate il processo M = 100 volte e costruite l’istogramma e 
-# l’autocorrelazione mediati su queste M iterazioni,
-# mostrando la standard deviation come barra d’errore.
-
-
 # Compito 2: create_RISKEN.c
 
 # Create un codice che simuli il processo multiscala definito dal seguente coefficiente di drift:
@@ -36,26 +28,6 @@ import random
 #    - Δt: passo temporale
 #    - N: numero di passi temporali per traiettoria
 #    - M: numero di iterazioni (traiettorie da simulare)
-
-# 3. Iterare la simulazione M volte e, per ciascuna:
-#    - Generare una traiettoria del processo X(t)
-#    - Salvare i dati delle traiettorie su file (opzionale)
-
-# 4. Calcolare:
-#    - L'istogramma della densità di probabilità stazionaria (area normalizzata a 1)
-#    - La funzione di autocorrelazione del processo
-#    - La media e la deviazione standard delle quantità sopra, calcolate su M traiettorie
-
-# 5. Visualizzazione:
-#    - Mostrare i risultati con barre d’errore corrispondenti alla deviazione standard
-
-# Suggerimenti:
-# - Usare strutture dati dinamiche o array allocati in modo efficiente per gestire i dati
-# - Utilizzare una libreria esterna per la generazione di numeri casuali, se necessario
-# - Separare il codice in funzioni modulari: lettura parametri, simulazione, analisi, output
-
-#
-
 
 # Compito OU:
 #   - Processo Ornstein-Uhlenbeck via Langevin

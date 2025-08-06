@@ -1,6 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Simulazione Ensemble-Average di:
+#   • Ornstein–Uhlenbeck
+#   • Processo multiscala di Risken
+# Calcolo di pdf (media±σ), autocorrelazione (media±σ) e momenti centrali ordine 1…K.
+# Tutti i parametri definiti internamente.
+
+# def drift_OU(x, γ):        return -γ*x
+# def drift_RISK(x, α, β):   return -α*x/(1+β*x*x)
+
 t, step, taum, m, y = 300, 100, 50, 100, 0.1
 dt, n, means, sd = 1/step, t*step, np.zeros(taum), np.zeros(taum)
 
@@ -20,6 +29,7 @@ for k in range(m):
         x[i] = x[i-1] - y*x[i-1]*dt + np.random.normal(0,(2*dt)**0.5)
     ac = Ac(x[::step])
     means += ac
+   # means[i] = np.mean(x[::step]) ?
     sd += ac**2
 
 means /= m

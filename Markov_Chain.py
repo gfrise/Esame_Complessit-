@@ -6,8 +6,8 @@ import numpy as np, matplotlib.pyplot as plt
 # la matrice che descrive la distribuzione di probabilità
 
 #ipotesi di matrice stocastica
-P = np.array([[ 0.9, 0.1],
-              [0.1, 0.9]])
+P = np.array([[ 0.7, 0.3],
+              [0.2, 0.8]])
 
 #90% di star fermo e 10 di andare nel 2. 
 # prob di essere in uno stato e di passare in un 
@@ -53,7 +53,6 @@ plt.show()
 from scipy.linalg import eig
 # La funzione stazionaria soddisfa anche P.T pi.T = pi.T dove con .T indico la trasposta, ovviamente soddisfa anche l'uguaglianza senza .T
 
-
 # Calcolo dell'autovettore stazionario
 w, v = eig(P.T) # w contiene gli autovalori e v gli autovettori della trasposta di P
 stationary = v[:, np.isclose(w, 1)] # Prende l'autovettore con autovalore 1
@@ -61,6 +60,5 @@ stationary = stationary[:,0].real
 stationary /= stationary.sum()  # normalizzazione
 
 print("Distribuzione stazionaria:", stationary)
-
 # Come ci si aspettava è 0.5 entrambi
 # Se si cambia la matrice iniziale chiaramente cambiano anche questi valori

@@ -5,8 +5,8 @@ import random
 # processo di Ornstein-Uhlenbeck a partire dalla sua equazione di Langevin. 
 # Il codice deve anche prevedere la costruzione della pdf (area normalizzata ad 1) e funzione di autocorrelazione
 # i parametri rilevanti della simulazione tramite file 
-# Iterate il processo M = 100 volte e costruite l’istogramma e 
-# l’autocorrelazione mediati su queste M iterazioni,
+# Iterate il processo M = 100 volte e costruite l’istogramma della densità di probabilità stazionaria normalizzata a 1 e 
+# la funzione di autocorrelazione mediati su queste M iterazioni,
 # mostrando la standard deviation come barra d’errore.
 #Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=c, poniamo c=1
 
