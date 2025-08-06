@@ -81,36 +81,6 @@ K            = 6                    # momenti fino all'ordine K
 def drift_OU(x, γ):        return -γ*x
 def drift_RISK(x, α, β):   return -α*x/(1+β*x*x)
 
-# ── Simulazione Euler–Maruyama ─────────────────────────────────────
-def simulate(drift, params):
-    X = np.zeros((M, N))
-    sqrt_dt = np.sqrt(dt)
-    for m in range(M):
-        for i in range(1, N):
-            X[m,i] = (X[m,i-1]
-                      + drift(X[m,i-1], *params)*dt
-                      + σ*np.random.randn()*sqrt_dt)
-    return X
-
-# ── Statistiche Ensemble ───────────────────────────────────────────
-def stats(X):
-    # PDF
-    edges = np.linspace(*xlim, bins+1)
-    h = np.array([np.histogram(traj, edges, density=True)[0] for traj in X])
-    centers, hμ, hσ = (edges[:-1]+edges[1:])/2, h.mean(0), h.std(0)
-    # Autocorr
-    def acf(x):
-        xc = x - x.mean()
-        c  = np.correlate(xc, xc, 'full')[N-1:]
-        return c/c[0]
-    A = np.array([acf(x) for x in X])
-    aμ, aσ = A.mean(0), A.std(0)
-    # Momenti centrali su tutti i campioni
-    allx = X.ravel()
-    μ = allx.mean()
-    cm = [np.mean((allx-μ)**k) for k in range(1, K+1)]
-    return centers, hμ, hσ, aμ, aσ, cm
-
 # ── Plot ────────────────────────────────────────────────────────────
 def plot(centers, hμ, hσ, aμ, aσ, cm, title):
     plt.figure(figsize=(10,4))

@@ -7,7 +7,7 @@ lag = np.arange(0,tmax,dt)
 
 def AC(x,t):
     m1, m2, s1, s2, cov = 0,0,0,0,0
-    rng = n-tmax #len(x)
+    rng = n-tmax #len(x)?
 
     for i in range(rng):
         m1+=x[i]
