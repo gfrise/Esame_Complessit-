@@ -19,27 +19,6 @@ import random
 # - σ (sigma) è l’intensità del rumore bianco,
 # - W_t è un moto browniano standard.
 
-# Richieste:
-# 1. Implementare un’integrazione numerica del processo usando lo schema di Eulero–Maruyama.
-# 2. Fare in modo che tutti i parametri rilevanti (k, σ, Δt, N, M, ecc.) siano letti da un file esterno
-#    oppure passati da linea di comando.
-#    - k: intensità del drift
-#    - σ: intensità del rumore
-#    - Δt: passo temporale
-#    - N: numero di passi temporali per traiettoria
-#    - M: numero di iterazioni (traiettorie da simulare)
-
-# Compito OU:
-#   - Processo Ornstein-Uhlenbeck via Langevin
-#   - Generazione rumore gaussiano
-#   - Shuffling preservando la PDF
-#   - Statistiche base, PDF e autocorrelazione
-
-# Compito RISK:
-#   - Processo "RISK" (drift ±kappa a seconda del segno)
-#   - Generazione rumore gaussiano
-#   - Shuffling, statistiche, PDF, autocorrelazione
-
 # Compito Wiener:
 #   - Moto Browniano (processo di Wiener)
 #   - PDF e varianza in funzione del tempo
