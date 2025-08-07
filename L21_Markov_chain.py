@@ -90,3 +90,9 @@ plt.show()
 w, v = eig(P.T)
 stationary = v[:, np.isclose(w, 1)].real 
 print("Distribuzione stazionaria:", stationary/stationary.sum())
+
+
+# Una catena di ordine k ha N^k stati composti => 
+# k = logN(dim) con N = # di simboli e dim = ordine matrice di transizione (N^k x N^k)
+k = int(round(np.log(M.shape[0])/np.log(n)))
+print(f"Ordine catena di Markov: {k}")
