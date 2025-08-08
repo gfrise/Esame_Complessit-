@@ -15,12 +15,26 @@ lag = np.arange(0, lagMax, dLag)
 nn = N*step #nn
 m=100
 
-# Equivalente
+# Equivalenti
 # def AC(x,t):
 #     if t == 0: 
 #         return 1.0
 #     x1,x2=x[:-t],x[t:]
 #     return ((x1 * x2).mean()-x1.mean()*x2.mean())/(x1.std()*x2.std())
+
+# def Ac_equiv(x):
+#     res = np.zeros(taum)
+#     n = len(x) - taum  # fisso per coerenza
+#     x1 = x[:n]         # fisso anche questo
+#     m1, sd1 = x1.mean(), x1.std()
+
+#     for t in range(taum):
+#         x2 = x[t:t+n]
+#         m2, sd2 = x2.mean(), x2.std()
+#         corr = (x1 * x2).mean() #x[j]*x[j+t]
+#         res[t] = (corr - m1*m2) / (sd1 * sd2)
+#     return res
+
 
 def autocorrelation(x, t):
     m1=0
