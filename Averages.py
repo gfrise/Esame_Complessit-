@@ -2,11 +2,7 @@ import numpy as np
 
 def time_average(x, tau):
     """
-    Calcola la autocovarianza time average:
     (1/T) * sum_t x[t] * x[t+tau]
-    
-    x : lista o array monodimensionale (una sola serie)
-    tau : lag (intero >= 0)
     """
     T = len(x)
     somma = 0.0
@@ -22,33 +18,22 @@ def time_average(x, tau):
 #         x[i]=x[i-1]-y*dt*x[i-1]+np.sqrt(dt)*noise[i]
 #         ac[i]+=x[0]*x[k]
 # Array per memorizzare traiettorie e autocorrelazioni
-# all_trajectories = np.zeros((nENS, nR))
-# ensemble_means = np.zeros(nENS)
-# autocorrs = np.zeros((nENS, tau_max))
+autocorrs = np.zeros((nENS, tau_max))
+for i in range(m):
+    # Calcolo autocorrelazione per questa traiettoria
+    autocorrs[i] = ac(OU(),taumax)
+# Calcolo autocorrelazione media sull'ensemble
+avg_autocorr = np.mean(autocorrs,axis=0)
 
-# for iter in range(nENS):
-#     # Generazione rumore gaussiano
-#     total_steps = nR * enne
-#     Z = np.random.normal(0, np.sqrt(2 * delt), total_steps)
-    
-#     # Simulazione processo Ornstein-Uhlenbeck
-#     X = np.zeros(total_steps)
-#     X[0] = np.random.uniform(-1, 1)
-    
-#     for i in range(1, total_steps):
-#         X[i] = X[i-1] - gammaOU * X[i-1] * delt + Z[i]
-    
-#     # Campionamento
-#     sampled_X = X[::enne]
 
-#     all_trajectories[iter] = sampled_X
-#     ensemble_means[iter] = np.mean(sampled_X)
-    
-#     # Calcolo autocorrelazione per questa traiettoria
-#     autocorrs[iter] = autocorrelation(sampled_X, tau_max)
-
-# # Calcolo autocorrelazione media sull'ensemble
-# avg_autocorr = np.mean(autocorrs, axis=0)
+def ensemble():
+    mean_ens, mean2_ens = np.zeros(N),np.zeros(N)
+    for _ in range(m):
+        traj = OU(1)
+        mean_ens[:]+=traj
+        mean2_ens[:]+=traj**2
+    mean_ens[:]/=m
+    mean2_ens[:]/=m
 
 def mixed_average(series, tau):
     """
@@ -56,10 +41,9 @@ def mixed_average(series, tau):
       C(τ) = (1/M) * sum_{i=1}^M [ (1/T) * sum_{t=0}^{T-τ-1} series[i][t] * series[i][t+τ] ]
 
     series : lista di M liste, ciascuna di lunghezza T
-    tau    : lag (intero >= 0)
     """
     M = len(series)          # numero di serie
-    T = len(series[0])       # lunghezza di ciascuna serie
+    T = len(series[0])       # lunghezza serie
     somma_totale = 0.0
 
     for seq in series:
@@ -72,11 +56,9 @@ def mixed_average(series, tau):
 
 def ensemble_average(X, tau):
     """
-    Calcola la autocovarianza ensemble average:
     (1/M) * sum_i x_i[0] * x_i[tau]
     
     X : lista di liste o 2D array-like, con shape (M, T)
-    tau : lag (intero >= 0)
     """
     M = len(X)          # numero di serie
     somma = 0.0
@@ -85,3 +67,13 @@ def ensemble_average(X, tau):
         somma += X[i][0] * X[i][tau]
 
     return somma / M
+
+# Compito Wiener:
+#   - Moto Browniano (processo di Wiener)
+#   - PDF e varianza in funzione del tempo
+Z_w = np.random.normal(0, np.sqrt(dt), N)
+X_wiener = np.zeros(N)
+X_wiener[0] = 0.1
+for i in range(1, N):
+    X_wiener[i] = X_wiener[i-1] + Z_w[i]
+####

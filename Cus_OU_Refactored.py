@@ -14,6 +14,14 @@ n, t, tmax, m, y = 300, 100, 50, 100, 0.1
 dt, nn = 1/t, n*t
 lag = np.arange(0,tmax,dt)
 
+# EQUIVALENTE
+# def AC(x,t):
+#     if t==0:
+#         x1,x2 = x,x
+#     else:
+#         x1,x2=x[:-t],x[t:]
+#     return np.mean((x1*x2)-np.mean(x1)*np.mean(x2))/(np.std(x1)*np.std(x2))
+
 def AC(x,t):
     m1, m2, s1, s2, cov = 0,0,0,0,0
     rng = n-tmax #len(x)?
