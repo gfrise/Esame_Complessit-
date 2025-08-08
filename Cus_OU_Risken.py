@@ -1,14 +1,26 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import random
+import random, numpy as np, matplotlib.pyplot as plt
 
-N = 10**3
-step = 100
-dLag = 1/step
-lagMax = 40
+# Il codice deve anche prevedere la costruzione della pdf 
+# (area normalizzata ad 1) e funzione di autocorrelazione
+# Iterate il processo M = 100 volte e costruite l’istogramma della densità di probabilità stazionaria normalizzata a 1 e 
+# la funzione di autocorrelazione mediati su queste M iterazioni,
+# mostrando la standard deviation come barra d’errore.
+#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=c, poniamo c=1
+
+N = 200 #n
+step = 100 #t
+dLag = 1/step #dt
+lagMax = 50 #tmax
 lag = np.arange(0, lagMax, dLag)
-nn = N*step
+nn = N*step #nn
 m=100
+
+# Equivalente
+# def AC(x,t):
+#     if t == 0: 
+#         return 1.0
+#     x1,x2=x[:-t],x[t:]
+#     return ((x1 * x2).mean()-x1.mean()*x2.mean())/(x1.std()*x2.std())
 
 def autocorrelation(x, t):
     m1=0
@@ -68,6 +80,7 @@ for k in (range(m)):
             x_risk[i] = x_risk[i-1] - kappa * dLag + np.sqrt(dLag) * noise2[i]
 
     x_ul_series = [x_ul[t] for t in range(1, nn, step)]
+    # x_ul_series = x_ul[::step]
     x_risk_series = [x_risk[t] for t in range(1, nn, step)]
     
     for t in range(lagMax):
@@ -84,6 +97,7 @@ for k in (range(m)):
     x_ul_shuffled = x_ul_series.copy()
     x_risk_shuffled = x_risk_series.copy()
     
+    #x = np.random.choice(x_,len(x_),replace=True)
     for i in range (1,N):
         pos = random.randrange(N)
         temp = x_ul_shuffled[i]
