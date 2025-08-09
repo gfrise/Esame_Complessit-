@@ -29,12 +29,8 @@ for i in range(n):
     #oppure x_b = np.random.choice(x, size=n, replace= True)
 print(x_b)
 
-#differenza naive_bootstrap
-## Primo metodo: shuffle (permutazione) – rimescola gli elementi di x senza ripetizioni.
-# Secondo metodo: bootstrap sample – estrae elementi casuali da x con rimpiazzo (possono esserci ripetizioni).
 # naive numero a 0 a n-1, durstenfeld da 0 a n-i, sattolo da 0 a n-i-1,
-
-#dusternfeld ammette ripetizioni sattolo no, non può ricadere nello stesso posto 
-# perchè c'è >= (fisher yates e dusternefel non c'è differenze, 
-# durstenfeld è fisher yates ottimizzato perchè fisher yeates 
-# ogni volta cencella il dato che shuflluato dal vettre originale)
+# Durstenfeld è una versione ottimizzata di Fisher-Yates che 
+# fa lo shuffle direttamente sull’array originale, senza creare copie extra, 
+# rendendo l’algoritmo più veloce e meno costoso in memoria.
+# dusrst shuffla in avanti, fisher indietro
