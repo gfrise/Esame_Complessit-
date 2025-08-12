@@ -1,5 +1,4 @@
 import numpy as np, matplotlib.pyplot as plt
-import random
 
 n, l, m, sd = 10**3, 10**3, 3, 0.14
 means = np.empty(n)
