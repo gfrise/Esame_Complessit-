@@ -1,224 +1,99 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy.stats as stats
-import pandas as pd
-
 # assignment va data 3 giorni prima, vedere quando è programmazione per sicurezza. Cosa succede se non è una dist con varianza finita (quando si calcola l'intervallo di confidenza si assume che sia gaussiana)
 # quindi cosa succede quando la dist delle medie non è gaussiana e quando i valori non sono indipendenti, il ruolo della memoria (ou e altro)
 
-import numpy as np, matplotlib.pyplot as plt
-from scipy.stats import t,pareto
-
-N, i, M, SD, df, alpha = 10**3, 1000, 3, 0.4, 5, 1.5
-
-def OU(N,M,SD,theta,dt=1):
-    x = np.empty(N)
-    x[0] = M
-    for t in range(1, N):
-        x[t] = x[t-1] + theta*(M - x[t-1])*dt + SD*np.sqrt(dt)*np.random.randn()
-    return x
-
-# means_t = [np.mean(t.rvs(df=df, loc=M, scale=SD/np.sqrt(df/(df-2)), size=N)) for _ in range(i)]
-# mean_pl = [np.mean(pareto.rvs(alpha, size=N)) for _ in range(i)]
-means_gauss = [np.mean(np.random.normal(M,SD,N)) for _ in range(i)]
-means_ou_low = [np.mean(OU(N,M,SD,theta=1.5)) for _ in range(i)]   #θ grande poca memoria
-means_ou_high= [np.mean(OU(N,M,SD,theta=0.001)) for _ in range(i)]  #θ piccolo molta memoria
-
-def plotta(data, title, M, SD, N):
-    emp_mean = np.mean(data)
-    emp_std = np.std(data)*np.sqrt(N)
-
-    plt.hist(data, bins=30, edgecolor="black")
-    plt.title(
-        f"{title}\n"
-        f"μ bootstrap = {emp_mean:.3f}   σ bootstrap = {emp_std:.3f}\n"
-        f"μ teorica = {M:.3f}          σ teorica = {SD:.3f}"
-    )    
-    plt.xlabel("Media campionaria")
-    plt.ylabel("Frequenza")
-    plt.show()
-
-plotta(means_gauss, "iid Gaussiana", M, SD, N)
-plotta(means_ou_low, "OU memoria breve", M, SD, N)
-plotta(means_ou_high, "OU memoria lunga", M, SD, N)
-
-# Impostazioni generali
-np.random.seed(42)
-sample_size = 1000
-n_bootstrap = 1000
-
-def bootstrap_mean(sample, n_bootstrap=1000):
-    """Esegue bootstrap con rimpiazzo per stimare la media."""
-    means = np.array([
-        np.mean(np.random.choice(sample, size=len(sample), replace=True))
-        for _ in range(n_bootstrap)
-    ])
-    return means
-
-def analyze_distribution(dist_name, sample, theoretical_mean, theoretical_std):
-    """Analizza la distribuzione e stampa istogrammi e metriche."""
-    boot_means = bootstrap_mean(sample, n_bootstrap)
-    
-    # Metriche bootstrap
-    boot_mean = np.mean(boot_means)
-    boot_std = np.std(boot_means)
-
-    # Grafici
-    plt.figure()
-    plt.hist(sample, bins=50, alpha=0.6, density=True)
-    plt.title(f"{dist_name} - Campione")
-    plt.xlabel("Valore")
-    plt.ylabel("Frequenza")
-    plt.grid(True)
-    plt.show()
-
-    plt.figure()
-    plt.hist(boot_means, bins=50, alpha=0.7, density=True)
-    plt.title(f"{dist_name} - Bootstrap delle medie")
-    plt.xlabel("Media")
-    plt.ylabel("Frequenza")
-    plt.grid(True)
-    plt.show()
-
-    # Risultati
-    results = {
-        "Distribuzione": dist_name,
-        "Media teorica": theoretical_mean,
-        "Media bootstrap": boot_mean,
-        "Errore media": abs(boot_mean - theoretical_mean),
-        "Std teorica": theoretical_std,
-        "Std bootstrap delle medie": boot_std,
-        "Errore std": abs(boot_std - theoretical_std)
-    }
-
-    return results
-
-# Lista dei risultati
-results = []
-
-# 1. Normale standard
-sample = np.random.normal(0, 1, sample_size)
-results.append(analyze_distribution("Normale standard", sample, 0, 1 / np.sqrt(sample_size)))
-
-# 2. Student t (df=1.5) - varianza fortemente divergente
-df = 1.5
-sample = stats.t.rvs(df, size=sample_size)
-results.append(analyze_distribution("Student t (df=1.5)", sample, 0, np.nan))  # std teorica non definita
-
-# 3. Student t (df=2.1) - varianza ancora divergente ma meno
-df = 2.1
-sample = stats.t.rvs(df, size=sample_size)
-theo_std = np.sqrt(df / (df - 2)) / np.sqrt(sample_size)
-results.append(analyze_distribution("Student t (df=2.1)", sample, 0, theo_std))
-
-# 4. Student t (df=5) - varianza finita
-df = 5
-sample = stats.t.rvs(df, size=sample_size)
-theo_std = np.sqrt(df / (df - 2)) / np.sqrt(sample_size)
-results.append(analyze_distribution("Student t (df=5)", sample, 0, theo_std))
-
-# 5. Pareto (α=1.5) - varianza molto divergente
-alpha = 1.5
-pareto_sample = (np.random.pareto(alpha, sample_size) + 1)
-theo_mean = alpha / (alpha - 1) if alpha > 1 else np.inf
-results.append(analyze_distribution("Pareto (α=1.5)", pareto_sample, theo_mean, np.nan))
-
-# 6. Pareto (α=2.1) - varianza divergente ma meno
-alpha = 2.1
-pareto_sample = (np.random.pareto(alpha, sample_size) + 1)
-theo_mean = alpha / (alpha - 1)
-theo_std = np.sqrt(alpha / ((alpha - 1)**2 * (alpha - 2))) / np.sqrt(sample_size)
-results.append(analyze_distribution("Pareto (α=2.1)", pareto_sample, theo_mean, theo_std))
-
-# 7. Pareto (α=3.5) - varianza finita
-alpha = 3.5
-pareto_sample = (np.random.pareto(alpha, sample_size) + 1)
-theo_mean = alpha / (alpha - 1)
-theo_std = np.sqrt(alpha / ((alpha - 1)**2 * (alpha - 2))) / np.sqrt(sample_size)
-results.append(analyze_distribution("Pareto (α=3.5)", pareto_sample, theo_mean, theo_std))
-
-# Mostra tabella risultati
-df_results = pd.DataFrame(results)
-import caas_jupyter_tools as tools; tools.display_dataframe_to_user(name="Risultati Bootstrap", dataframe=df_results)
-
-# -*- coding: utf-8 -*-
 import numpy as np
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima_process import ArmaProcess
-from arch.bootstrap import MovingBlockBootstrap
-import nolds
-from fbm import FBM
-from fracdiff import fracdiff
-import warnings
-warnings.filterwarnings("ignore")
+from scipy import stats
+import pandas as pd
 
-# Parametri
-n = 1000
-n_bootstrap = 1000
+rng = np.random.default_rng(42)
 
-def bootstrap_mean_classic(series, n_bootstrap=1000):
-    return np.array([
-        np.mean(np.random.choice(series, size=len(series), replace=True))
-        for _ in range(n_bootstrap)
-    ])
+# Settings
+n = 1000        # sample size
+B = 2000        # bootstrap replicates
+bins = 60       # histogram bins
 
-def bootstrap_mean_moving_block(series, block_size, n_bootstrap=1000):
-    mbb = MovingBlockBootstrap(block_size, series)
-    return np.array([np.mean(data[0]) for data in mbb.bootstrap(n_bootstrap)])
+def bootstrap_means(x, B=1000, rng=None):
+    rng = np.random.default_rng() if rng is None else rng
+    n = len(x)
+    idx = rng.integers(0, n, size=(B, n))
+    means = x[idx].mean(axis=1)
+    return means
 
-def plot_bootstrap_results(name, series, classic_means, block_means):
+def summarize_bootstrap(means, label):
+    return {
+        "label": label,
+        "boot_mean_of_means": float(np.mean(means)),
+        "boot_se": float(np.std(means, ddof=1)),
+        "p2.5": float(np.percentile(means, 2.5)),
+        "p97.5": float(np.percentile(means, 97.5)),
+        "skew": float(stats.skew(means)),
+        "kurtosis_excess": float(stats.kurtosis(means)),  # Fisher, 0=normal
+    }
+
+summaries = []
+
+# 1) IID CASES
+# 1a) Normal(0,1)
+x_norm = rng.normal(loc=0.0, scale=1.0, size=n)
+m_norm = bootstrap_means(x_norm, B=B, rng=rng)
+summaries.append(summarize_bootstrap(m_norm, "Normal(0,1)"))
+
+# 1b) t-Student finite variance (nu=5)
+nu_finite = 5.0
+x_t5 = rng.standard_t(df=nu_finite, size=n)
+m_t5 = bootstrap_means(x_t5, B=B, rng=rng)
+summaries.append(summarize_bootstrap(m_t5, f"t-Student(df={nu_finite}) finite var"))
+
+# 1c) t-Student infinite variance (nu=1.5) -> variance diverges, mean exists (nu>1)
+nu_inf = 1.5
+x_t15 = rng.standard_t(df=nu_inf, size=n)
+m_t15 = bootstrap_means(x_t15, B=B, rng=rng)
+summaries.append(summarize_bootstrap(m_t15, f"t-Student(df={nu_inf}) infinite var"))
+
+# 1d) Power-law / Pareto Type I with xm=1
+xm = 1.0
+
+def pareto_sample(alpha, size, rng):
+    # Pareto Type I with scale xm: X = xm * (1 - U)^(-1/alpha), U~U(0,1)
+    U = rng.random(size)
+    return xm * (1 - U) ** (-1.0/alpha)
+
+# convergent variance: alpha=3 (>2)
+alpha_conv = 3.0
+x_pl_conv = pareto_sample(alpha_conv, n, rng)
+m_pl_conv = bootstrap_means(x_pl_conv, B=B, rng=rng)
+summaries.append(summarize_bootstrap(m_pl_conv, f"Pareto(alpha={alpha_conv}) finite var"))
+
+# divergent variance: alpha=1.5 (<=2)
+alpha_div = 1.5
+x_pl_div = pareto_sample(alpha_div, n, rng)
+m_pl_div = bootstrap_means(x_pl_div, B=B, rng=rng)
+summaries.append(summarize_bootstrap(m_pl_div, f"Pareto(alpha={alpha_div}) infinite var"))
+
+# Show histograms for the bootstrap means
+datasets = [
+    ("Normal(0,1)", m_norm),
+    (f"t(df={nu_finite}) finite var", m_t5),
+    (f"t(df={nu_inf}) infinite var", m_t15),
+    (f"Pareto(alpha={alpha_conv}) finite var", m_pl_conv),
+    (f"Pareto(alpha={alpha_div}) infinite var", m_pl_div),
+]
+
+for title, means in datasets:
     plt.figure()
-    plt.hist(series, bins=50, alpha=0.5, label="Serie originale", density=True)
-    plt.title(f"{name} - Serie originale")
-    plt.grid(True)
+    plt.hist(means, bins=bins, density=True, edgecolor="black")
+    plt.title(f"Bootstrap means — {title}\n(n={n}, B={B})")
+    plt.xlabel("mean* (bootstrap)")
+    plt.ylabel("density")
+    plt.tight_layout()
     plt.show()
 
-    plt.figure()
-    plt.hist(classic_means, bins=50, alpha=0.6, label="Bootstrap classico", density=True)
-    plt.hist(block_means, bins=50, alpha=0.6, label="Block bootstrap", density=True)
-    plt.title(f"{name} - Medie bootstrap")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+df_sum = pd.DataFrame(summaries)
 
-    print(f"\n{name}")
-    print("-" * 40)
-    print(f"Media reale: {np.mean(series):.4f}")
-    print(f"Std reale (della media): {np.std(series)/np.sqrt(len(series)):.4f}")
-    print(f"Hurst stimato: {nolds.hurst_rs(series):.4f}")
-    print(f"Bootstrap classico - Media: {np.mean(classic_means):.4f}, Std: {np.std(classic_means):.4f}")
-    print(f"Block bootstrap - Media: {np.mean(block_means):.4f}, Std: {np.std(block_means):.4f}")
+from caas_jupyter_tools import display_dataframe_to_user
+display_dataframe_to_user("Bootstrap means — IID cases: summary stats (ripristinato)", df_sum)
 
-# 1. AR(1) con phi=0.8
-phi = 0.8
-ar = np.array([1, -phi])
-ma = np.array([1])
-ar_process = ArmaProcess(ar, ma)
-series_ar1 = ar_process.generate_sample(nsample=n)
-
-classic_ar1 = bootstrap_mean_classic(series_ar1, n_bootstrap)
-block_ar1 = bootstrap_mean_moving_block(series_ar1, block_size=20, n_bootstrap=n_bootstrap)
-plot_bootstrap_results("AR(1)", series_ar1, classic_ar1, block_ar1)
-
-# 2. Fractional Brownian Motion con H=0.8
-def generate_fbm(n, hurst):
-    f = FBM(n=n, hurst=hurst, length=1, method='daviesharte')
-    return f.fbm()
-
-fbm_series = generate_fbm(n, hurst=0.8)
-classic_fbm = bootstrap_mean_classic(fbm_series, n_bootstrap)
-block_fbm = bootstrap_mean_moving_block(fbm_series, block_size=20, n_bootstrap=n_bootstrap)
-plot_bootstrap_results("fBM (H=0.8)", fbm_series, classic_fbm, block_fbm)
-
-# 3. ARFIMA(0,d,0) con d=0.4
-def generate_arfima(d, n):
-    white_noise = np.random.normal(size=n + 100)
-    series, _ = fracdiff(white_noise, d)
-    return series[-n:]
-
-series_arfima = generate_arfima(d=0.4, n=n)
-classic_arfima = bootstrap_mean_classic(series_arfima, n_bootstrap)
-block_arfima = bootstrap_mean_moving_block(series_arfima, block_size=20, n_bootstrap=n_bootstrap)
-plot_bootstrap_results("ARFIMA (d=0.4)", series_arfima, classic_arfima, block_arfima)
-
-print("\n✔️ Analisi completata.")
+csv_path = "/mnt/data/bootstrap_iid_summary.csv"
+df_sum.to_csv(csv_path, index=False)
+csv_path
