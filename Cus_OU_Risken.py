@@ -14,6 +14,28 @@ lag = np.arange(0, lagMax, dLag) # interi ordinati start,stop,step
 nn = N*step 
 m=100
 
+# def ensemble_autocorr(m, nn):
+#     ac = np.zeros(nn)
+#     for _ in range(m):
+#         x = OU(nn)
+#         ac += x[0] * x
+#     return ac / m
+#     # Calcolo autocorrelazione per questa traiettoria
+#     # Calcolo autocorrelazione media sull'ensemble
+
+
+### vedere se funziona
+# def ensemble_avg(x,tmax): # x è array (M,T) di traiettorie per righe
+#     data -= data.mean(axis=0)
+#     col1 = x[:,0] # : -> prendi ogni riga, 0 -> col 1 ==> vettore lungo m delle serie al tempo 0
+#     var1 = np.var(col1)
+#     ac, ac_std = np.empty(tmax)
+#     for t in range(tmax+1):
+#         p = (col1*x[:,t])/var1 # corrisponde a fare for i in range(M):somma += X[i][0] * X[i][tau] return somma / M
+#         ac.append(p.mean())
+#         ac_std.append(p.std())
+#     return ac, ac_std
+
 # Equivalenti
 # def AC(x,t):
 #     if t == 0: 
