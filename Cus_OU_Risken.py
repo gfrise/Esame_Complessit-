@@ -5,14 +5,13 @@ import random, numpy as np, matplotlib.pyplot as plt
 # Iterate il processo M = 100 volte e costruite l’istogramma della densità di probabilità stazionaria normalizzata a 1 e 
 # la funzione di autocorrelazione mediati su queste M iterazioni,
 # mostrando la standard deviation come barra d’errore.
-#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=c, poniamo c=1
 
-N = 200 #n
+N = 200
 step = 100 #t
 dLag = 1/step #dt
-lagMax = 50 #tmax
-lag = np.arange(0, lagMax, dLag)
-nn = N*step #nn
+lagMax = 50 
+lag = np.arange(0, lagMax, dLag) # interi ordinati start,stop,step
+nn = N*step 
 m=100
 
 # Equivalenti
@@ -24,8 +23,8 @@ m=100
 
 # def Ac_equiv(x):
 #     res = np.zeros(taum)
-#     n = len(x) - taum  # fisso per coerenza
-#     x1 = x[:n]         # fisso anche questo
+#     n = len(x) - taum 
+#     x1 = x[:n]         
 #     m1, sd1 = x1.mean(), x1.std()
 
 #     for t in range(taum):
@@ -36,18 +35,17 @@ m=100
 #     return res
 
 
-# --- Milstein (generico) --- secondo ordine, anche con rumore moltiplicativo
-def milstein(n, x0, dt, h, g, gprime):
+# Milstein 2° anche rumore moltiplicativo
+def milstein(n, x0, dt, h, g, g1):
     x = np.empty(n); x[0] = x0
     dW = np.random.normal(0, np.sqrt(dt), n-1)
     for i in range(1, n):
         xi = x[i-1]; d = dW[i-1]
-        x[i] = xi + h(xi)*dt + g(xi)*d + 0.5*g(xi)*gprime(xi)*(d*d - dt)
+        x[i] = xi + h(xi)*dt + g(xi)*d + 0.5*g(xi)*g1(xi)*(d*d - dt)
     return x
 
-# --- OU second-order (specifico per OU additivo) ---
-# Kloeden-Platen-style second-order specific for OU (additive noise)
-def OU2_second(n, sigma=np.sqrt(2.0), dt=1e-3, y=1.0, x0=0.1, seed1=None, seed2=None, seed3=None):
+# OU 2° Kloeden-Platen per OU additivo
+def OU2_second(n, sigma=np.sqrt(2.0), dt=1e-3, y=1.0, x0=0.1, seed1=None, seed2=None):
     x = np.empty(n); x[0] = x0
     rng1 = np.random.default_rng(seed1); rng2 = np.random.default_rng(seed2); 
     g1 = rng1.normal(0,1,n-1); g2 = rng2.normal(0,1,n-1); 
@@ -83,10 +81,9 @@ def autocorrelation(x, t):
     sd2 = (sd2/(N-lagMax))-m2**2
     sd2 = sd2**0.5
     corr /= (N-lagMax)
-    #print(corr)
     return (corr-m1*m2)/(sd1*sd2)
 
-#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=c, poniamo c=1
+#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=1
 gamma1 = 0.1
 gamma2 = 0.2
 med_ul = np.zeros(lagMax)
@@ -135,11 +132,9 @@ for k in (range(m)):
         med_risk[t] += ac
         sd_risk[t] += ac**2
 
-    #Shuffling
     x_ul_shuffled = x_ul_series.copy()
     x_risk_shuffled = x_risk_series.copy()
     
-    #x = np.random.choice(x_,len(x_),replace=True)
     for i in range (1,N):
         pos = random.randrange(N)
         temp = x_ul_shuffled[i]
@@ -170,7 +165,6 @@ for t in range(lagMax):
     med_ul_shuffled[t] /= m
     sd_ul_shuffled[t] = sd_ul_shuffled[t]/m - med_ul_shuffled[t]**2
     sd_ul_shuffled[t] = np.sqrt(sd_ul_shuffled[t])
-    # print(f'{t}: {med_ul[t]}\t{sd_ul[t]}\t{med_ul_shuffled[t]}\t{sd_ul_shuffled[t]}')
 
 for t in range(lagMax):
     med_risk[t] /= m
@@ -179,7 +173,6 @@ for t in range(lagMax):
     med_risk_shuffled[t] /= m
     sd_risk_shuffled[t] = sd_risk_shuffled[t]/m - med_risk_shuffled[t]**2
     sd_risk_shuffled[t] = np.sqrt(sd_risk_shuffled[t])
-    # print(f'{t}: {med_risk[t]}\t{sd_risk[t]}\t{med_risk_shuffled[t]}\t{sd_risk_shuffled[t]}')
 
 x_plot = np.linspace(0,lagMax,lagMax)
 plt.errorbar(x_plot, med_ul, yerr=sd_ul, c='black', fmt='.', capsize=5, label='UL')
