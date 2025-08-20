@@ -8,7 +8,7 @@ for i in range(n):
     j = randint(n) # [0,n-1]
     x[j], x[i] = x[i], x[j]
 
-#DUSTERNFELD è fisher ottimizzato e veloce, shuffla in avanti invece che indietro senza array intermedi, permutazioni uniformi no ripetizione 
+#DUSTERNFELD è fisher migliorato, shuffla in avanti non indietro e senza array intermedi, permutazioni uniformi no ripetizione 
 for i in range(n-1): # range(n-1,0,-1) e randint(0,i+1) per dusternfeld e fisher yates è quello accapo
     j = randint(i,n) # j = i +randint(n-i) [0,n-i]
     x[j], x[i] = x[i], x[j]

@@ -36,49 +36,6 @@ m=100
 #         ac_std.append(p.std())
 #     return ac, ac_std
 
-# Equivalenti
-# def AC(x,t):
-#     if t == 0: 
-#         return 1.0
-#     x1,x2=x[:-t],x[t:]
-#     return ((x1 * x2).mean()-x1.mean()*x2.mean())/(x1.std()*x2.std())
-
-# def Ac_equiv(x):
-#     res = np.zeros(taum)
-#     n = len(x) - taum 
-#     x1 = x[:n]         
-#     m1, sd1 = x1.mean(), x1.std()
-
-#     for t in range(taum):
-#         x2 = x[t:t+n]
-#         m2, sd2 = x2.mean(), x2.std()
-#         corr = (x1 * x2).mean() #x[j]*x[j+t]
-#         res[t] = (corr - m1*m2) / (sd1 * sd2)
-#     return res
-
-
-# Milstein 2° anche rumore moltiplicativo
-def milstein(n, x0, dt, h, g, g1):
-    x = np.empty(n); x[0] = x0
-    dW = np.random.normal(0, np.sqrt(dt), n-1)
-    for i in range(1, n):
-        xi = x[i-1]; d = dW[i-1]
-        x[i] = xi + h(xi)*dt + g(xi)*d + 0.5*g(xi)*g1(xi)*(d*d - dt)
-    return x
-
-# OU 2° Kloeden-Platen per OU additivo
-def OU2_second(n, sigma=np.sqrt(2.0), dt=1e-3, y=1.0, x0=0.1, seed1=None, seed2=None):
-    x = np.empty(n); x[0] = x0
-    rng1 = np.random.default_rng(seed1); rng2 = np.random.default_rng(seed2); 
-    g1 = rng1.normal(0,1,n-1); g2 = rng2.normal(0,1,n-1); 
-    Y1 = sigma * g1; Y2 = sigma * g2; 
-    z1 = Y1 * np.sqrt(dt)
-    z2 = (Y2/(2.0*np.sqrt(3.0)) + Y1/2.0) * dt**1.5
-    ydt = y * dt
-    for i in range(1, n):
-        x[i] = x[i-1] * (1.0 - ydt + 0.5*(ydt**2)) + z1[i-1] - y * z2[i-1]
-    return x
-
 def autocorrelation(x, t):
     m1=0
     sd1=0
@@ -107,7 +64,7 @@ def autocorrelation(x, t):
 
 #Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=1
 gamma1 = 0.1
-gamma2 = 0.2
+gamma2 = 0.1
 med_ul = np.zeros(lagMax)
 sd_ul = np.zeros(lagMax)
 med_ul_shuffled = np.zeros(lagMax)
@@ -135,11 +92,6 @@ for k in (range(m)):
         else:
             x_risk[i] = x_risk[i-1] - kappa * dLag + np.sqrt(dLag) * noise2[i]
 
-    # Moto browniano (processo di Wiener)
-    # x[0] = 0.1
-    # for i in range(1,N):
-    # x[i] = x[i-1] + np.random.normal(0,dt**0.5)
-
     x_ul_series = [x_ul[t] for t in range(1, nn, step)]
     # x_ul_series = x_ul[::step]
     x_risk_series = [x_risk[t] for t in range(1, nn, step)]
@@ -148,8 +100,6 @@ for k in (range(m)):
         ac = autocorrelation(x_ul_series, t)
         med_ul[t] += ac
         sd_ul[t] += ac**2
-
-    for t in range(lagMax):
         ac = autocorrelation(x_risk_series, t)
         med_risk[t] += ac
         sd_risk[t] += ac**2

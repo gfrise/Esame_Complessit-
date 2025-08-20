@@ -86,3 +86,31 @@ plt.ylabel("Autocorrelazione")
 plt.grid()
 plt.legend()
 plt.show()
+
+# Milstein 2° anche rumore moltiplicativo
+def milstein(n, x0, dt, h, g, g1):
+    x = np.empty(n); x[0] = x0
+    dW = np.random.normal(0, np.sqrt(dt), n-1)
+    for i in range(1, n):
+        xi = x[i-1]; d = dW[i-1]
+        x[i] = xi + h(xi)*dt + g(xi)*d + 0.5*g(xi)*g1(xi)*(d*d - dt)
+    return x
+
+# OU 2° Kloeden-Platen per OU additivo
+def OU2_second(n, sigma=np.sqrt(2.0), dt=1e-3, y=1.0, x0=0.1, seed1=None, seed2=None):
+    x = np.empty(n); x[0] = x0
+    rng1 = np.random.default_rng(seed1); rng2 = np.random.default_rng(seed2); 
+    g1 = rng1.normal(0,1,n-1); g2 = rng2.normal(0,1,n-1); 
+    Y1 = sigma * g1; Y2 = sigma * g2; 
+    z1 = Y1 * np.sqrt(dt)
+    z2 = (Y2/(2.0*np.sqrt(3.0)) + Y1/2.0) * dt**1.5
+    ydt = y * dt
+    for i in range(1, n):
+        x[i] = x[i-1] * (1.0 - ydt + 0.5*(ydt**2)) + z1[i-1] - y * z2[i-1]
+    return x
+
+# Moto browniano (processo di Wiener)
+def Wiener():
+    x[0] = 0.1
+    for i in range(1,N):
+        x[i] = x[i-1] + np.random.normal(0,dt**0.5) 
