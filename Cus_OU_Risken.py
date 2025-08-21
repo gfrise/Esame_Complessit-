@@ -1,173 +1,88 @@
-import random, numpy as np, matplotlib.pyplot as plt
+import numpy as np, matplotlib.pyplot as plt
+import random
 
-# Il codice deve anche prevedere la costruzione della pdf 
-# (area normalizzata ad 1) e funzione di autocorrelazione
-# Iterate il processo M = 100 volte e costruite l’istogramma della densità di probabilità stazionaria normalizzata a 1 e 
-# la funzione di autocorrelazione mediati su queste M iterazioni,
-# mostrando la standard deviation come barra d’errore.
+# costruire pdf con area 1 e funzione di autocorrelazione
+# Iterate M volte e costruite l’istogramma della densità di probabilità stazionaria normalizzata a 1 e 
+# la funzione di autocorrelazione mediati su queste M iterazioni mostrando la standard deviation come barra d’errore. 
 
-N = 200
-step = 100 #t
-dLag = 1/step #dt
-lagMax = 50 
-lag = np.arange(0, lagMax, dLag) # interi ordinati start,stop,step
-nn = N*step 
-m=100
+# col1 = x[:,0] # : -> prendi ogni riga, 0 -> col 1 ==> vettore lungo m delle serie al tempo 0
+# for i in range(M):somma += X[i][0] * X[i][tau] return somma / M
+def ensemble_autocorr_corrected(m, nn):
+    ac = np.zeros(nn)
+    ac2 = np.zeros(nn)
+    for _ in range(m):
+        x=np.random.normal(0,1)
+        x_c = x - x.mean()
+        var_x = x_c.var()
+        for tau in range(nn):
+            ac_tau = np.mean(x_c[:nn-tau]*x_c[tau:])
+            ac[tau] += ac_tau/var_x
+            ac2[tau] += (ac_tau/var_x)**2
 
-# def ensemble_autocorr(m, nn):
-#     ac = np.zeros(nn)
-#     for _ in range(m):
-#         x = OU(nn)
-#         ac += x[0] * x
-#     return ac / m
-#     # Calcolo autocorrelazione per questa traiettoria
-#     # Calcolo autocorrelazione media sull'ensemble
+    ac_mean = ac / m
+    ac_std = np.sqrt(ac2/m - ac_mean**2)
+    return ac_mean, ac_std
 
+n, t, tmax, m, y, kappa = 1000, 100, 50, 100, 0.1, 0.5
+dt, nn = 1/t, n*t # t:=step
+m_ou, s_ou = np.zeros(tmax), np.zeros(tmax)
+m_risk, s_risk = np.zeros(tmax), np.zeros(tmax)
+m_ou_sh, s_ou_sh = np.zeros(tmax), np.zeros(tmax)
+m_risk_sh, s_risk_sh = np.zeros(tmax), np.zeros(tmax)
 
-### vedere se funziona
-# def ensemble_avg(x,tmax): # x è array (M,T) di traiettorie per righe
-#     data -= data.mean(axis=0)
-#     col1 = x[:,0] # : -> prendi ogni riga, 0 -> col 1 ==> vettore lungo m delle serie al tempo 0
-#     var1 = np.var(col1)
-#     ac, ac_std = np.empty(tmax)
-#     for t in range(tmax+1):
-#         p = (col1*x[:,t])/var1 # corrisponde a fare for i in range(M):somma += X[i][0] * X[i][tau] return somma / M
-#         ac.append(p.mean())
-#         ac_std.append(p.std())
-#     return ac, ac_std
+def AC(x,t):
+    m1,s1,m2,s2,corr,l = 0,0,0,0,0, len(x)-t #n-tmax
+    for j in range(l):
+        m1+=x[j]
+        s1+=x[j]**2
+        m2+=x[j+t]
+        s2+=x[j+t]**2
+        corr+=x[j]*x[j+t]
+    m1 /= l
+    m2 /= l
+    s1 = (s1/l - m1**2)**0.5
+    s2 = (s2/l - m2**2)**0.5
+    return (corr/l - m1*m2)/(s1*s2)
 
-def autocorrelation(x, t):
-    m1=0
-    sd1=0
-
-    for j in range(N-lagMax):
-        m1 = m1 + x[j]
-        sd1 = sd1 + x[j]**2
-
-    m1 = m1 / (N-lagMax)
-    sd1 = (sd1/(N-lagMax))-m1**2
-    sd1 = sd1**0.5
-    
-    m2=0
-    sd2=0
-    corr=0
-    for j in range(N-lagMax):
-        m2 = m2+x[j+t]
-        sd2 = sd2 + x[j+t]**2
-        corr = corr + x[j]*x[j+t]
-
-    m2 /= (N-lagMax)
-    sd2 = (sd2/(N-lagMax))-m2**2
-    sd2 = sd2**0.5
-    corr /= (N-lagMax)
-    return (corr-m1*m2)/(sd1*sd2)
-
-#Ornstein e Ulembeck ha h(x) = -gamma*x e g(x)=1
-gamma1 = 0.1
-gamma2 = 0.1
-med_ul = np.zeros(lagMax)
-sd_ul = np.zeros(lagMax)
-med_ul_shuffled = np.zeros(lagMax)
-sd_ul_shuffled = np.zeros(lagMax)
-
-med_risk = np.zeros(lagMax)
-sd_risk = np.zeros(lagMax)
-med_risk_shuffled = np.zeros(lagMax)
-sd_risk_shuffled = np.zeros(lagMax)
-
-kappa = 0.5
-
-for k in (range(m)):
-    x_ul = np.zeros(nn)
+#h(x) = -gamma*x e g(x)=1
+for k in range(m):
+    x_ou = np.zeros(nn)
     x_risk = np.zeros(nn)
-    x_ul[0] = 0.1
-    x_risk[0] = 0.1
-    noise1 = np.random.normal(0, np.sqrt(2), nn)
-    noise2 = np.random.normal(0, np.sqrt(2), nn)
-    
-    for i in range (1,nn):
-        x_ul[i] = x_ul[i-1] - gamma1*x_ul[i-1]*dLag + np.sqrt(dLag)*noise1[i]
-        if x_risk[i-1] < 0:
-            x_risk[i] = x_risk[i-1] + kappa * dLag + np.sqrt(dLag) * noise2[i]
-        else:
-            x_risk[i] = x_risk[i-1] - kappa * dLag + np.sqrt(dLag) * noise2[i]
+    x_ou[0] = x_risk[0] = 0.1
 
-    x_ul_series = [x_ul[t] for t in range(1, nn, step)]
-    # x_ul_series = x_ul[::step]
-    x_risk_series = [x_risk[t] for t in range(1, nn, step)]
-    
-    for t in range(lagMax):
-        ac = autocorrelation(x_ul_series, t)
-        med_ul[t] += ac
-        sd_ul[t] += ac**2
-        ac = autocorrelation(x_risk_series, t)
-        med_risk[t] += ac
-        sd_risk[t] += ac**2
+    for i in range(1, nn):
+        x_ou[i] = x_ou[i-1] - y*dt*x_ou[i-1] + np.random.normal(0,np.sqrt(2*dt))
+        drift = kappa*dt if x_risk[i-1]<0 else -kappa*dt
+        x_risk[i] = x_risk[i-1] + drift + np.random.normal(0,np.sqrt(2*dt))
 
-    x_ul_shuffled = x_ul_series.copy()
-    x_risk_shuffled = x_risk_series.copy()
-    
-    for i in range (1,N):
-        pos = random.randrange(N)
-        temp = x_ul_shuffled[i]
-        x_ul_shuffled[i] = x_ul_shuffled[pos]
-        x_ul_shuffled[pos] = temp
+    x_ou_s, x_risk_s = x_ou[::t], x_risk[::t]
+    x_ou_shuff, x_risk_shuff = x_ou_s.copy(), x_risk_s.copy()
 
-    for i in range (1,N):
-        pos = random.randrange(N)
-        temp = x_risk_shuffled[i]
-        x_risk_shuffled[i] = x_risk_shuffled[pos]
-        x_risk_shuffled[pos] = temp
+    for i in range(1,n): 
+        j = random.randrange(n); x_ou_shuff[i],x_ou_shuff[j] = x_ou_shuff[j],x_ou_shuff[i]
+        x_risk_shuff[i],x_risk_shuff[j] = x_risk_shuff[j],x_risk_shuff[i]
 
-    for t in range(lagMax):
-        ac_shuffled = autocorrelation(x_ul_shuffled, t)
-        med_ul_shuffled[t] += ac_shuffled
-        sd_ul_shuffled[t] += ac_shuffled**2
+    for tau in range(tmax):
+        ac = AC(x_ou_s,tau); m_ou[tau]+=ac; s_ou[tau]+=ac**2
+        ac = AC(x_risk_s,tau); m_risk[tau]+=ac; s_risk[tau]+=ac**2
+        ac = AC(x_ou_shuff,tau); m_ou_sh[tau]+=ac; s_ou_sh[tau]+=ac**2
+        ac = AC(x_risk_shuff,tau); m_risk_sh[tau]+=ac; s_risk_sh[tau]+=ac**2
 
-    for t in range(lagMax):
-        ac_shuffled = autocorrelation(x_risk_shuffled, t)
-        med_risk_shuffled[t] += ac_shuffled
-        sd_risk_shuffled[t] += ac_shuffled**2
+def finalize(mv,sv): return mv/m, np.sqrt(sv/m - (mv/m)**2) 
+m_ou,s_ou = finalize(m_ou,s_ou)
+m_risk,s_risk = finalize(m_risk,s_risk)
+m_ou_sh,s_ou_sh = finalize(m_ou_sh,s_ou_sh)
+m_risk_sh,s_risk_sh = finalize(m_risk_sh,s_risk_sh)
 
-
-for t in range(lagMax):
-    med_ul[t] /= m
-    sd_ul[t] = sd_ul[t]/m - med_ul[t]**2
-    sd_ul[t] = np.sqrt(sd_ul[t])
-    med_ul_shuffled[t] /= m
-    sd_ul_shuffled[t] = sd_ul_shuffled[t]/m - med_ul_shuffled[t]**2
-    sd_ul_shuffled[t] = np.sqrt(sd_ul_shuffled[t])
-
-for t in range(lagMax):
-    med_risk[t] /= m
-    sd_risk[t] = sd_risk[t]/m - med_risk[t]**2
-    sd_risk[t] = np.sqrt(sd_risk[t])
-    med_risk_shuffled[t] /= m
-    sd_risk_shuffled[t] = sd_risk_shuffled[t]/m - med_risk_shuffled[t]**2
-    sd_risk_shuffled[t] = np.sqrt(sd_risk_shuffled[t])
-
-x_plot = np.linspace(0,lagMax,lagMax)
-plt.errorbar(x_plot, med_ul, yerr=sd_ul, c='black', fmt='.', capsize=5, label='UL')
-plt.errorbar(x_plot, med_ul_shuffled, yerr=sd_ul_shuffled, c='red', fmt='.', capsize=5, label='UL - Shuffled')
-plt.errorbar(x_plot, med_risk, yerr=sd_risk, c='blue', fmt='.', capsize=5, label='RISK')
-plt.errorbar(x_plot, med_risk_shuffled, yerr=sd_risk_shuffled, c='green', fmt='.', capsize=5, label='RISK - Shuffled')
+x_plot = np.arange(tmax)
+plt.errorbar(x_plot,m_ou,yerr=s_ou,fmt='.',c='black',capsize=5,label='OU')
+plt.errorbar(x_plot,m_ou_sh,yerr=s_ou_sh,fmt='.',c='red',capsize=5,label='OU - Shuffled')
+plt.errorbar(x_plot,m_risk,yerr=s_risk,fmt='.',c='blue',capsize=5,label='RISK')
+plt.errorbar(x_plot,m_risk_sh,yerr=s_risk_sh,fmt='.',c='green',capsize=5,label='RISK - Shuffled')
+plt.plot(x_plot,np.exp(-y*x_plot),'k--',label='OU analitico')
+plt.axhline(1/np.sqrt(n),ls='--',c='gray',label='1/sqrt(N)')
 plt.legend()
 plt.yscale('log')
-plt.show()
-
-x_plot = np.linspace(0,lagMax,lagMax)
-plt.errorbar(x_plot, med_ul, yerr=sd_ul, c='black', fmt='.', capsize=5, label='UL')
-plt.errorbar(x_plot, med_ul_shuffled, yerr=sd_ul_shuffled, c='red', fmt='.', capsize=5, label='UL - Shuffled')
-plt.errorbar(x_plot, med_risk, yerr=sd_risk, c='blue', fmt='.', capsize=5, label='RISK')
-plt.errorbar(x_plot, med_risk_shuffled, yerr=sd_risk_shuffled, c='green', fmt='.', capsize=5, label='RISK - Shuffled')
-plt.legend()
-plt.show()
-
-x_plot = np.linspace(0,lagMax,lagMax)
-plt.axhline(1/N**0.5, linewidth=2, linestyle='--')
-plt.plot(x_plot, sd_ul, '.', c='black', label='UL')
-plt.plot(x_plot, sd_ul_shuffled, '.', c='r', label='UL - Shuffled')
-plt.plot(x_plot, sd_risk, '.', c='blue', label='RISK')
-plt.plot(x_plot, sd_risk_shuffled, '.', c='green', label='RISK - Shuffled')
-plt.legend()
+plt.xlabel("Lag")
+plt.ylabel("Autocorrelazione")
 plt.show()
