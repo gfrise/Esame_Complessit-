@@ -7,7 +7,7 @@ from scipy.stats import norm
 # quindi cosa succede quando la dist delle medie non è gaussiana e quando i valori non sono indipendenti, il ruolo della memoria (ou e altro)
 rng = np.random.default_rng(42)
 
-n = 20000        # sample size
+n = 4000        # sample size
 B = 2000        # bootstrap replicates
 bins = 60       # histogram bins
 
@@ -61,7 +61,7 @@ summaries.append(summarize_bootstrap(m_norm, "Normal(0,1)", original=x_norm))
 
 # ===== t-Student =====
 t_results = []
-for nu in [0.4, 1.0, 5.0, 10.0]:
+for nu in [0.4, 1.0, 5.0, 20.0]:
     x = rng.standard_t(df=nu, size=n)
     m = bootstrap_means(x, B=B, rng=rng)
     desc = f"t-Student(df={nu})"
@@ -82,7 +82,7 @@ def pareto_sample(alpha, size, rng):
     return xm * (1 - rng.random(size)) ** (-1.0/alpha)
 
 p_results = []
-for alpha in [0.4, 1.2, 5.0, 10.0]:
+for alpha in [0.4, 1.0, 5.0, 20.0]:
     x = pareto_sample(alpha, n, rng)
     m = bootstrap_means(x, B=B, rng=rng)
     desc = f"Pareto(alpha={alpha})"
@@ -207,7 +207,7 @@ def fgn(n, hurst=0.8, rng=None):
     z = rng.normal(size=n)
     return L @ z   # ritorna solo il segnale
 
-hurst_list = [0.1, 0.3, 0.5, 0.6, 0.8, 0.95]  # variazioni di H
+hurst_list = [0.5, 0.6, 0.8, 0.95]  # variazioni di H
 
 for H in hurst_list:
     x_fgn = fgn(n, hurst=H, rng=rng)
