@@ -205,4 +205,4 @@ for title, means in datasets:
 df_sum = pd.DataFrame(summaries)
 print(df_sum)
 
-#come mostrare dati, jupyter o py? 
+#come mostrare dati invece di dataframe, jupyter o py? 
