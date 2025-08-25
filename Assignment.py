@@ -8,7 +8,7 @@ import pandas as pd
 # quindi cosa succede quando la dist delle medie non è gaussiana e quando i valori non sono indipendenti, il ruolo della memoria (ou e altro)
 rng = np.random.default_rng(42)
 
-n = 1000        # sample size
+n = 20000        # sample size
 B = 2000        # bootstrap replicates
 bins = 60       # histogram bins
 
@@ -56,7 +56,7 @@ summaries.append(summarize_bootstrap(m_norm, "Normal(0,1)"))
 
 # ===== t-Student =====
 t_results = []
-for nu in [0.4, 1.2, 5.0, 10.0]:
+for nu in [0.4, 1.0, 5.0, 10.0]:
     x = rng.standard_t(df=nu, size=n)
     m = bootstrap_means(x, B=B, rng=rng)
     desc = f"t-Student(df={nu})"
@@ -103,7 +103,7 @@ for title, means in datasets:
     # gaussiana di riferimento (media e sigma dal bootstrap)
     mu = np.mean(means)
     sigma = np.std(means, ddof=1)
-    x_vals = np.linspace(mu - 4*sigma, mu + 4*sigma, 200)
+    x_vals = np.linspace(mu - 6*sigma, mu + 6*sigma, 200)
     # gaussiana smussata per evidenziare le differenze
     plt.plot(x_vals, norm.pdf(x_vals, mu, sigma*1.2), 'r--', lw=2, alpha=0.6, label="Gaussiana di riferimento")
     plt.title(f"Bootstrap means — {title}\n(n={n}, B={B})")
@@ -188,7 +188,7 @@ for title, means in datasets:
     # gaussiana di riferimento (media e sigma dal bootstrap)
     mu = np.mean(means)
     sigma = np.std(means, ddof=1)
-    x_vals = np.linspace(mu - 4*sigma, mu + 4*sigma, 200)
+    x_vals = np.linspace(mu - 6*sigma, mu + 6*sigma, 200)
     
     # gaussiana smussata per evidenziare le differenze
     plt.plot(x_vals, norm.pdf(x_vals, mu, sigma*1.2), 'r--', lw=2, alpha=0.6, label="Gaussiana di riferimento")
