@@ -7,7 +7,7 @@ from scipy.stats import norm
 
 rng = np.random.default_rng(42)
 
-n = 7000        # sample size
+n = 2000        # sample size
 B = 2000        # bootstrap replicates
 bins = 60       # histogram bins
 
@@ -55,8 +55,7 @@ def plot_with_stats(title, means, summary, bins=60):
 
     mu, sigma = np.mean(means), np.std(means, ddof=1)
     x_vals = np.linspace(mu - 6*sigma, mu + 6*sigma, 200)
-    plt.plot(x_vals, norm.pdf(x_vals, mu, sigma*1.2),
-             'r--', lw=2, alpha=0.6, label="Gaussiana di riferimento")
+    plt.plot(x_vals, norm.pdf(x_vals, mu, sigma*1.2), 'r--', lw=2, alpha=0.6, label="Gaussiana di riferimento")
 
     rows = []
     if summary.get("population_mean") is not None:
