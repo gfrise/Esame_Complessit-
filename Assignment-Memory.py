@@ -3,14 +3,13 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.linalg import toeplitz, cholesky
 
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(463372)
 
-n = 7000        # sample size
-B = 2000        # bootstrap replicates
-bins = 60       # histogram bins
+n = 15000      # sample size
+B = 10**3       # bootstrap replicates
+bins = 50       # histogram bins
 
-
-def bootstrap_means(x, B=1000, rng=None):
+def bootstrap_means(x, B, rng=None):
     n = len(x)
     idx = rng.integers(0, n, size=(B, n))
     return x[idx].mean(axis=1)
@@ -37,9 +36,7 @@ def summarize_bootstrap(means, label, original=None):
         })
     return summary
 
-# ------------------------------  
 # Stampa ordinata su console  
-# ------------------------------  
 def print_summary(summary):
     def fmt(v):
         return f"{v:.3f}" if v is not None else "—"
@@ -60,9 +57,7 @@ def print_summary(summary):
     for key, label in keys:
         print(f"{label:<20} {fmt(summary.get(key))}")
 
-# ------------------------------  
-# Plot dei bootstrap  
-# ------------------------------  
+# Plot  
 def plot_means(title, means, bins=60):
     plt.figure(figsize=(12, 8))
     plt.hist(means, bins=bins, density=True, alpha=0.7, edgecolor="black")

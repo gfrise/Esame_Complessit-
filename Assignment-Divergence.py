@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.stats import norm
 
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(463372)
 
-n = 10**3        # sample size
-B = 1000        # bootstrap replicates
-bins = 50       # histogram bins
+n = 10**5      # sample size
+B = 10**3      # bootstrap replicates
+bins = 50      # histogram bins
 
-def bootstrap_means(x, B=1000, rng=None):
+def bootstrap_means(x, B, rng=None):
     n = len(x)
     idx = rng.integers(0, n, size=(B, n))
     return x[idx].mean(axis=1)
@@ -41,7 +41,6 @@ def print_summary(summary):
     def fmt(v):
         return f"{v:.3f}" if v is not None else "—"
 
-    # Lista chiave + etichetta in ordine
     keys = [
         ("original_mean",   "Mean (original)"),
         ("original_std",    "Std (original)"),
@@ -58,7 +57,7 @@ def print_summary(summary):
     for key, label in keys:
         print(f"{label:<20} {fmt(summary.get(key))}")
 
-# Plot come prima
+# Plot 
 def plot_means(title, means, bins=60):
     plt.figure(figsize=(12, 8))
     plt.hist(means, bins=bins, density=True, alpha=0.7, edgecolor="black")
@@ -70,6 +69,7 @@ def plot_means(title, means, bins=60):
     # percentili
     plt.axvline(np.percentile(means, 2.5), color='orange', linestyle='--', lw=2, label='2.5% percentile')
     plt.axvline(np.percentile(means, 97.5), color='orange', linestyle='--', lw=2, label='97.5% percentile')
+    
     plt.title(f"Bootstrap means — {title}")
     plt.xlabel("bootstrap means")
     plt.ylabel("Density")
@@ -101,6 +101,7 @@ for nu in [0.4, 1.0, 5.0, 20.0]:
 # Pareto
 def pareto_sample(alpha,size,rng):
     return (1 - rng.random(size))**(-1/alpha)
+
 for alpha in [0.4,1.0,5.0,20.0]:
     x = pareto_sample(alpha,n,rng)
     m = bootstrap_means(x,B,rng)
