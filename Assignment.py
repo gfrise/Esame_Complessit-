@@ -1,5 +1,4 @@
-# assignment va data 3 giorni prima, vedere quando è programmazione. Cosa succede se non è una dist con varianza finita (quando si calcola l'intervallo di confidenza si assume che sia gaussiana)
-# quindi cosa succede quando la dist delle medie non è gaussiana e quando i valori non sono indipendenti, il ruolo della memoria (ou e altro)
+# assignment va dato 3 giorni prima
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
