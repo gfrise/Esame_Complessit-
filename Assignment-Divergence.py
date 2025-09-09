@@ -39,7 +39,7 @@ def summarize_bootstrap(means, label, original=None):
 # Stampa ordinata su console
 def print_summary(summary):
     def fmt(v):
-        return f"{v:.4f}" if v is not None else "—"
+        return f"{v:.3f}" if v is not None else "—"
 
     # Lista chiave + etichetta in ordine
     keys = [

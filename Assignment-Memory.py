@@ -9,11 +9,8 @@ n = 7000        # sample size
 B = 2000        # bootstrap replicates
 bins = 60       # histogram bins
 
-# ------------------------------  
-# Funzioni di servizio  
-# ------------------------------  
+
 def bootstrap_means(x, B=1000, rng=None):
-    rng = np.random.default_rng() if rng is None else rng
     n = len(x)
     idx = rng.integers(0, n, size=(B, n))
     return x[idx].mean(axis=1)
@@ -45,7 +42,7 @@ def summarize_bootstrap(means, label, original=None):
 # ------------------------------  
 def print_summary(summary):
     def fmt(v):
-        return f"{v:.4f}" if v is not None else "—"
+        return f"{v:.3f}" if v is not None else "—"
 
     keys = [
         ("original_mean", "Mean (original)"),
@@ -89,7 +86,6 @@ def plot_means(title, means, bins=60):
 # Processi con memoria  
 # ------------------------------  
 def ornstein_uhlenbeck(n, theta=0.5, mu=0.0, x0=0.0, rng=None):
-    rng = np.random.default_rng() if rng is None else rng
     x = np.zeros(n)
     x[0] = x0
     for t in range(1, n):
@@ -97,7 +93,6 @@ def ornstein_uhlenbeck(n, theta=0.5, mu=0.0, x0=0.0, rng=None):
     return x
 
 def fgn(n, hurst, rng=None):
-    rng = np.random.default_rng() if rng is None else rng
     gamma = lambda k: 0.5*((abs(k+1)**(2*hurst) - 2*abs(k)**(2*hurst) + abs(k-1)**(2*hurst)))
     cov = np.array([gamma(k) for k in range(n)])
     L = cholesky(toeplitz(cov), lower=True)
