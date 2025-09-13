@@ -5,11 +5,12 @@ from scipy.stats import norm
 
 rng = np.random.default_rng(463372)
 
-n = 10**5      # sample size
-B = 10**3      # bootstrap replicates
-bins = 50      # histogram bins
+n = 3000    # sample size
+B = 3000      # bootstrap replicates
+bins = 60      # histogram bins
 
 def bootstrap_means(x, B, rng=None):
+    rng = np.random.default_rng() if rng is None else rng
     n = len(x)
     idx = rng.integers(0, n, size=(B, n))
     return x[idx].mean(axis=1)

@@ -5,11 +5,12 @@ from scipy.linalg import toeplitz, cholesky
 
 rng = np.random.default_rng(463372)
 
-n = 15000      # sample size
-B = 10**3       # bootstrap replicates
-bins = 50       # histogram bins
+n = 3000     # sample size
+B = 3000      # bootstrap replicates
+bins = 60       # histogram bins
 
 def bootstrap_means(x, B, rng=None):
+    rng = np.random.default_rng() if rng is None else rng
     n = len(x)
     idx = rng.integers(0, n, size=(B, n))
     return x[idx].mean(axis=1)
@@ -102,7 +103,7 @@ for theta in [0.01, 1.2, 2]:
     experiments.append((m, summarize_bootstrap(m, f"OU theta={theta}", original=x)))
 
 # fGn
-for H in [0.5, 0.75, 0.95]:
+for H in [0.5, 0.75, 0.99999]:
     x = fgn(n, H, rng)
     m = bootstrap_means(x, B, rng)
     experiments.append((m, summarize_bootstrap(m, f"fGn H={H}", original=x)))
