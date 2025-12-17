@@ -13,7 +13,7 @@ print("Sigma teorica:",sd/(l)**0.5)
 plt.hist(means,bins=30)
 plt.title("PDF Medie")
 plt.show()
-#Campiona con ripetizione (no permutazioni) da un campione non da tanti, riproduce più caratteristiche
+#Campiona con  ripetizione (no permutazioni) da un campione non da tanti, riproduce più caratteristiche
 original = np.random.normal(m,sd,l)
 
 for i in range(n):
