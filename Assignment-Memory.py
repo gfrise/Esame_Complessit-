@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.linalg import toeplitz, cholesky
 
-rng = np.random.default_rng(463372)
+rng = np.random.default_rng(42)
 
 n = 3000     # sample size
 B = 3000      # bootstrap replicates
