@@ -4,9 +4,9 @@ from scipy import stats
 from scipy.linalg import toeplitz, cholesky
 from scipy.stats import norm
 
-rng = np.random.default_rng(42)
+rng = np.random.default_rng(482)
 
-n = 3000     # sample size
+n = 30     # sample size
 B = 3000      # bootstrap replicates
 bins = 60       # histogram bins
 
