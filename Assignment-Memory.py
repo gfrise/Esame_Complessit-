@@ -148,8 +148,7 @@ for theta in [0.01, 1.2, 2]:
     m = bootstrap_means(x, B, rng)
     experiments.append((m, summarize_bootstrap(m, f"OU theta={theta}", original=x)))
 
-# fGn
-for H in [0.00001, 0.5, 0.75, 0.99999]:
+for H in [0.5, 0.75, 0.99999]:
     x = fgn(n, H, rng)
     m = bootstrap_means(x, B, rng)
     experiments.append((m, summarize_bootstrap(m, f"fGn H={H}", original=x)))
