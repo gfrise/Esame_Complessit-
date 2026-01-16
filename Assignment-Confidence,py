@@ -1,328 +1,220 @@
-# ci_coverage_test.py
+# bootstrap_coverage_simple.py
 """
-Small, self-contained module to **test empirical reliability (coverage)** of
-bootstrap confidence intervals for a given statistic.
+Semplice test di coverage del percentile bootstrap per la media,
+variando parametri: Pareto alpha, Student-t df, OU theta, fGn H.
 
-Features
-- modular CI methods: percentile, normal (SE-based), BCa (jackknife accel.)
-- coverage_test(...) function that runs R independent samples and returns
-  coverage, MC-SE, average interval width, bias and other diagnostics
-- run_grid_coverage(...) to evaluate coverage across a grid of parameter values
-- simple plotting and CSV output helpers
+Salva: nessun file, stampa in console e mostra figure.
 
-Usage
-- import this file and call `coverage_test` for a single parameter
-- or call `run_grid_coverage` to sweep parameters and save results
-
-NOTE: For accuracy use reasonably large B (>=1000) and R (>=500). For quick
-debugging reduce them (e.g. B=500, R=200).
+Defaults (modifica in cima):
+- n: dimensione campione per replica
+- B: bootstrap replicates per replica
+- R: numero di repliche Monte Carlo per ogni valore di parametro
 """
-
 import numpy as np
-from scipy import stats
-from scipy.stats import norm
-from scipy.linalg import toeplitz, cholesky
 import matplotlib.pyplot as plt
-import pandas as pd
+from scipy import stats
+from scipy.linalg import toeplitz, cholesky
 
-# ----------------------
-# Basic bootstrap helpers
-# ----------------------
+# -----------------------
+# PARAMETRI UTENTE (modifica qui)
+# -----------------------
+n = 200           # sample size per replicate
+B = 1000          # bootstrap replicates per sample
+R = 500           # Monte Carlo replicates per each parameter value
+alpha_ci = 0.05   # nominal alpha (5% -> 95% CI)
+seed = 1234
+# -----------------------
 
-def rng_default(seed=None):
-    return np.random.default_rng(seed)
-
-
-def bootstrap_reps(x, B, rng):
-    n = len(x)
-    idx = rng.integers(0, n, size=(B, n))
-    return x[idx].mean(axis=1)
-
-
-# ----------------------
-# CI methods (wrapper signatures: (reps, x, stat_func, alpha) -> (lo,hi))
-# ----------------------
-
-def ci_percentile_wrapper(reps, x, stat_func, alpha=0.05):
-    lo = np.percentile(reps, 100 * (alpha / 2.0))
-    hi = np.percentile(reps, 100 * (1 - alpha / 2.0))
-    return lo, hi
+rng = np.random.default_rng(seed)
 
 
-def ci_normal_wrapper(reps, x, stat_func, alpha=0.05):
-    mean = np.mean(reps)
-    se = np.std(reps, ddof=1)
-    z = norm.ppf(1 - alpha / 2.0)
-    return mean - z * se, mean + z * se
+# -----------------------
+# generatori (signature: gen(param, rng, n) -> array length n)
+# -----------------------
+def pareto_gen(alpha, rng, n):
+    u = rng.random(n)
+    return (1.0 - u) ** (-1.0 / alpha)  # support [1, inf)
 
+def student_t_gen(df, rng, n):
+    return rng.standard_t(df, size=n)
 
-# BCa requires jackknife acceleration
-def jackknife_thetas(x, stat_func):
-    n = len(x)
-    thetas = np.empty(n)
-    for i in range(n):
-        thetas[i] = stat_func(np.delete(x, i))
-    return thetas
-
-
-def acceleration_jackknife(x, stat_func):
-    thetas = jackknife_thetas(x, stat_func)
-    theta_dot = np.mean(thetas)
-    numer = np.sum((theta_dot - thetas) ** 3)
-    denom = 6.0 * (np.sum((theta_dot - thetas) ** 2) ** 1.5)
-    if denom == 0:
-        return 0.0
-    return numer / denom
-
-
-def ci_bca_wrapper(reps, x, stat_func, alpha=0.05):
-    theta_hat = stat_func(x)
-    prop_less = np.mean(reps < theta_hat)
-    prop_less = np.clip(prop_less, 1e-10, 1 - 1e-10)
-    z0 = norm.ppf(prop_less)
-    a = acceleration_jackknife(x, stat_func)
-
-    def adj_q(q):
-        z = norm.ppf(q)
-        return norm.cdf(z0 + (z0 + z) / (1 - a * (z0 + z)))
-
-    lo_q = adj_q(alpha / 2.0)
-    hi_q = adj_q(1 - alpha / 2.0)
-    lo = np.percentile(reps, 100 * lo_q)
-    hi = np.percentile(reps, 100 * hi_q)
-    return lo, hi
-
-
-# ----------------------
-# Population truth helper
-# ----------------------
-
-def estimate_true_value(generator, param, stat_func, large_n=200000, rng=None):
-    """
-    Obtain a high-quality approximation of the population statistic by
-    drawing a large sample (or tiling generator calls).
-
-    generator(param, rng) must return a 1-d array sample (size possibly arbitrary).
-    """
-    rng = rng_default() if rng is None else rng
-    parts = []
-    need = large_n
-    # generator may return variable length; call repeatedly
-    while need > 0:
-        part = generator(param, rng)
-        if len(part) == 0:
-            break
-        take = min(len(part), need)
-        parts.append(part[:take])
-        need -= take
-    if len(parts) == 0:
-        raise ValueError('generator returned empty samples')
-    x = np.concatenate(parts)
-    return float(stat_func(x))
-
-
-# ----------------------
-# Coverage test core
-# ----------------------
-
-def coverage_test(
-    data_generator,
-    param,
-    stat_func=np.mean,
-    ci_method=ci_percentile_wrapper,
-    n=100,
-    B=1000,
-    R=1000,
-    alpha=0.05,
-    rng=None,
-    true_value=None,
-):
-    """
-    Run R independent replicates. For each replicate:
-      - draw a sample x = data_generator(param, rng) of size n
-      - compute B bootstrap replicates of stat_func(x)
-      - compute CI via ci_method
-    Returns a dictionary with coverage, mc_se, avg_width, bias, and full results array.
-
-    Parameters
-    - data_generator(param, rng) -> 1-d array sample
-    - stat_func: function mapping 1-d array -> statistic (float)
-    - ci_method: wrapper (reps, x, stat_func, alpha) -> (lo,hi)
-    - n: sample size
-    - B: bootstrap replicates per sample
-    - R: number of independent replicates
-    - true_value: optional; if None the function will estimate it using estimate_true_value
-    """
-    rng = rng_default() if rng is None else rng
-
-    # estimate true value if not provided
-    if true_value is None:
-        # try to compute by calling generator with big sample
-        try:
-            true_value = estimate_true_value(data_generator, param, stat_func, large_n=200000, rng=rng)
-        except Exception:
-            # fallback: use many draws of size n and average
-            vals = []
-            for _ in range(1000):
-                x = data_generator(param, rng)
-                vals.append(stat_func(x))
-            true_value = float(np.mean(vals))
-
-    captured = 0
-    widths = np.empty(R)
-    thetas = np.empty(R)
-    lo_arr = np.empty(R)
-    hi_arr = np.empty(R)
-
-    for i in range(R):
-        x = data_generator(param, rng)
-        # ensure sample size n: generator might return different length; if so, truncate/pad
-        if len(x) != n:
-            if len(x) > n:
-                x = x[:n]
-            else:
-                # if too short, draw more
-                extra = data_generator(param, rng)
-                x = np.concatenate([x, extra])[:n]
-        reps = bootstrap_reps(x, B, rng)
-        lo, hi = ci_method(reps, x, stat_func, alpha=alpha)
-        theta_hat = stat_func(x)
-        widths[i] = hi - lo
-        thetas[i] = theta_hat
-        lo_arr[i] = lo
-        hi_arr[i] = hi
-        if lo <= true_value <= hi:
-            captured += 1
-
-    prop = captured / R
-    mc_se = np.sqrt(prop * (1 - prop) / max(1, R))
-    result = {
-        'param': param,
-        'true_value': true_value,
-        'coverage': prop,
-        'mc_se': mc_se,
-        'avg_width': float(np.mean(widths)),
-        'sd_width': float(np.std(widths, ddof=1)),
-        'bias_mean': float(np.mean(thetas - true_value)),
-        'bias_sd': float(np.std(thetas - true_value, ddof=1)),
-        'R': R,
-        'B': B,
-        'alpha': alpha,
-        'lo_array': lo_arr,
-        'hi_array': hi_arr,
-        'theta_hats': thetas,
-    }
-    return result
-
-
-# ----------------------
-# Grid runner and plotting
-# ----------------------
-
-def run_grid_coverage(
-    data_generator,
-    param_values,
-    stat_func=np.mean,
-    ci_method=ci_percentile_wrapper,
-    n=100,
-    B=1000,
-    R=1000,
-    alpha=0.05,
-    rng=None,
-    true_values=None,
-    save_csv=None,
-):
-    """
-    Run coverage_test for each parameter in param_values. Returns pandas.DataFrame with results.
-    If save_csv is provided (filename), save the dataframe.
-    """
-    rows = []
-    for p in param_values:
-        res = coverage_test(data_generator, p, stat_func=stat_func, ci_method=ci_method,
-                            n=n, B=B, R=R, alpha=alpha, rng=rng,
-                            true_value=(None if true_values is None else true_values.get(p)))
-        rows.append({k: v for k, v in res.items() if k in ['param','true_value','coverage','mc_se','avg_width','sd_width','bias_mean','bias_sd','R','B','alpha']})
-    df = pd.DataFrame(rows)
-    if save_csv is not None:
-        df.to_csv(save_csv, index=False)
-    return df
-
-
-def plot_grid_coverage(param_values, coverages, mc_se=None, xlabel='parameter', title='Coverage'):
-    plt.figure(figsize=(8,4))
-    if mc_se is None:
-        plt.plot(param_values, coverages, '-o')
-    else:
-        plt.errorbar(param_values, coverages, yerr=mc_se, fmt='-o', capsize=3)
-    plt.axhline(0.95, color='red', ls='--', label='nominal 95%')
-    plt.xlabel(xlabel)
-    plt.ylabel('Empirical coverage')
-    plt.ylim(0,1)
-    plt.title(title)
-    plt.grid(alpha=0.2)
-    plt.legend()
-    plt.show()
-
-
-# ----------------------
-# Example generators (documented)
-# ----------------------
-
-def pareto_generator(alpha, rng, size=100):
-    u = rng.random(size)
-    return (1 - u) ** (-1.0 / alpha)
-
-
-def student_t_generator(df, rng, size=100):
-    return rng.standard_t(df, size=size)
-
-
-def normal_generator(mu_std_tuple, rng, size=100):
-    mu, sigma = mu_std_tuple
-    return rng.normal(mu, sigma, size=size)
-
-
-def ou_generator(theta, rng, size=100):
-    # OU with gaussian increments (simple Euler discretization)
-    x = np.zeros(size)
-    for t in range(1, size):
+def ou_gen(theta, rng, n):
+    # discrete OU-like process with gaussian noise (Euler)
+    x = np.zeros(n)
+    for t in range(1, n):
         x[t] = x[t-1] + theta * (0.0 - x[t-1]) + rng.normal()
     return x
 
+def fgn_gen(H, rng, n):
+    # fractional Gaussian noise via Cholesky of covariance (n moderate)
+    # cov[k] = gamma(k) for k=0..n-1 where gamma is auto-cov of fGn increments
+    gamma = lambda k: 0.5 * (abs(k+1)**(2*H) - 2*abs(k)**(2*H) + abs(k-1)**(2*H))
+    cov = np.array([gamma(k) for k in range(n)])
+    L = cholesky(toeplitz(cov), lower=True)
+    return L @ rng.normal(size=n)
 
-# ----------------------
-# If run as script, quick demo with reduced B/R for speed
-# ----------------------
-if __name__ == '__main__':
-    rng = rng_default(123)
-    # quick demo parameters (small for speed)
-    n = 80
-    B = 500
-    R = 300
-    alpha = 0.05
 
-    # Pareto demo (expect poor coverage for small alpha)
-    gen = lambda a, rng: pareto_generator(a, rng, size=n)
-    params = [0.6, 1.5, 3.0, 8.0]
+# -----------------------
+# funzione per calcolare bootstrap percentile CI della media
+# -----------------------
+def bootstrap_percentile_ci_mean(x, B, rng, alpha=0.05):
+    n = len(x)
+    idx = rng.integers(0, n, size=(B, n))
+    rep_means = x[idx].mean(axis=1)
+    lo = np.percentile(rep_means, 100 * (alpha/2.0))
+    hi = np.percentile(rep_means, 100 * (1 - alpha/2.0))
+    return lo, hi
 
-    print('Running quick coverage demo (Pareto)')
-    rows = []
+
+# -----------------------
+# funzioni helper: true mean (analitico quando possibile, altrimenti stima grossa)
+# -----------------------
+def true_mean_pareto(alpha):
+    if alpha <= 1.0:
+        return np.nan  # mean undefined
+    return alpha / (alpha - 1.0)  # xm = 1
+
+def true_mean_student(df):
+    if df <= 1.0:
+        return np.nan
+    return 0.0
+
+def true_mean_ou(theta):
+    return 0.0
+
+def true_mean_fgn(H):
+    return 0.0
+
+
+# -----------------------
+# coverage per una lista di parametri (sweep)
+# -----------------------
+def sweep_coverage(gen, true_mean_func, params, label, n, B, R, rng):
+    coverages = []
+    mc_se = []
     for p in params:
-        res = coverage_test(gen, p, stat_func=np.mean, ci_method=ci_percentile_wrapper,
-                            n=n, B=B, R=R, alpha=alpha, rng=rng)
-        rows.append(res)
-        print(f"param={p}, coverage={res['coverage']:.3f}, avg_width={res['avg_width']:.4f}")
+        true_val = true_mean_func(p)
+        # if true mean undefined (e.g. Pareto alpha<=1), mark NaN and skip heavy sim
+        if not np.isfinite(true_val):
+            coverages.append(np.nan)
+            mc_se.append(np.nan)
+            continue
 
-    # plot
-    covs = [r['coverage'] for r in rows]
-    ses = [r['mc_se'] for r in rows]
-    plot_grid_coverage(params, covs, mc_se=ses, xlabel='alpha (Pareto)', title='Pareto: empirical coverage')
+        count = 0
+        for r in range(R):
+            x = gen(p, rng, n)
+            lo, hi = bootstrap_percentile_ci_mean(x, B, rng, alpha=alpha_ci)
+            if lo <= true_val <= hi:
+                count += 1
+        prop = count / R
+        coverages.append(prop)
+        mc_se.append(np.sqrt(prop * (1 - prop) / max(1, R)))
+    return np.array(coverages), np.array(mc_se)
 
-    # Save results
-    try:
-        import pandas as pd
-        df = pd.DataFrame([{k:v for k,v in r.items() if k in ['param','true_value','coverage','mc_se','avg_width']} for r in rows])
-        df.to_csv('coverage_demo_pareto.csv', index=False)
-        print('Saved coverage_demo_pareto.csv')
-    except Exception:
-        pass
+
+# -----------------------
+# impostiamo le griglie (numericamente sicure con linspace)
+# -----------------------
+alphas = np.linspace(0.6, 8.0, 25)         # include regime problematico <1
+dfs = np.linspace(1.1, 30.0, 25)           # start >1 because mean undefined for df<=1
+thetas = np.linspace(0.01, 2.0, 25)        # OU theta
+Hs = np.concatenate([np.linspace(0.5,0.8,12), np.linspace(0.8,0.95,8), np.linspace(0.95,0.99,5)])
+
+# -----------------------
+# esegui sweep (stampa tempi parziali)
+# -----------------------
+import time
+t0 = time.time()
+print("Running Pareto sweep...")
+cov_p, se_p = sweep_coverage(pareto_gen, true_mean_pareto, alphas, "Pareto", n, B, R, rng)
+print("Done. Time:", time.time()-t0, "s")
+
+t0 = time.time()
+print("Running Student-t sweep...")
+cov_t, se_t = sweep_coverage(student_t_gen, true_mean_student, dfs, "Student-t", n, B, R, rng)
+print("Done. Time:", time.time()-t0, "s")
+
+t0 = time.time()
+print("Running OU sweep...")
+cov_o, se_o = sweep_coverage(ou_gen, true_mean_ou, thetas, "OU", n, B, R, rng)
+print("Done. Time:", time.time()-t0, "s")
+
+t0 = time.time()
+print("Running fGn sweep (Cholesky; moderate n recommended)...")
+# for fGn, keep n smaller to keep Cholesky feasible; re-use same n
+cov_h, se_h = sweep_coverage(fgn_gen, true_mean_fgn, Hs, "fGn", n, B, R, rng)
+print("Done. Time:", time.time()-t0, "s")
+
+
+# -----------------------
+# plotting: 2x2 figure elegante e scientifica
+# -----------------------
+plt.rcParams.update({
+    "figure.figsize": (14, 9),
+    "axes.titlesize": 12,
+    "axes.labelsize": 11,
+    "legend.fontsize": 10,
+    "lines.linewidth": 1.6,
+})
+
+fig, axes = plt.subplots(2, 2, constrained_layout=True)
+
+# Pareto
+ax = axes[0,0]
+ax.errorbar(alphas, cov_p, yerr=se_p, fmt='-o', capsize=3, markersize=4, color='#d95f02')
+ax.axhline(1-alpha_ci, color='red', linestyle='--', label=f'nominal {int((1-alpha_ci)*100)}%')
+ax.set_xlabel('Pareto α')
+ax.set_ylabel('Empirical coverage')
+ax.set_title('Pareto: coverage vs α (percentile bootstrap CI for mean)')
+ax.set_ylim(-0.02,1.02)
+ax.grid(alpha=0.25)
+ax.legend(loc='lower right')
+
+# Student-t
+ax = axes[0,1]
+ax.errorbar(dfs, cov_t, yerr=se_t, fmt='-o', capsize=3, markersize=4, color='#1f77b4')
+ax.axhline(1-alpha_ci, color='red', linestyle='--')
+ax.set_xlabel('Student-t df')
+ax.set_title('Student-t: coverage vs df')
+ax.set_ylim(-0.02,1.02)
+ax.grid(alpha=0.25)
+
+# OU
+ax = axes[1,0]
+ax.errorbar(thetas, cov_o, yerr=se_o, fmt='-o', capsize=3, markersize=4, color='#2ca02c')
+ax.axhline(1-alpha_ci, color='red', linestyle='--')
+ax.set_xlabel('OU θ')
+ax.set_title('OU: coverage vs θ (dependence effect)')
+ax.set_ylim(-0.02,1.02)
+ax.grid(alpha=0.25)
+
+# fGn
+ax = axes[1,1]
+ax.errorbar(Hs, cov_h, yerr=se_h, fmt='-o', capsize=3, markersize=4, color='#9467bd')
+ax.axhline(1-alpha_ci, color='red', linestyle='--')
+ax.set_xlabel('H (fGn)')
+ax.set_title('fGn: coverage vs H (long-range dependence)')
+ax.set_ylim(-0.02,1.02)
+ax.grid(alpha=0.25)
+
+plt.suptitle('Empirical coverage of percentile bootstrap CI for the mean\n(n=%d, B=%d, R=%d) ' % (n, B, R), fontsize=14, fontweight='bold')
+plt.show()
+
+
+# -----------------------
+# Breve report in console
+# -----------------------
+def report(name, params, cov, se):
+    print(f"\n{name}:")
+    for p, c, s in zip(params, cov, se):
+        if np.isnan(c):
+            print(f" param={p:.3g} -> coverage=NA (true mean undefined)")
+        else:
+            print(f" param={p:.3g} -> coverage={c:.3f} ± {s:.3f}")
+
+report("Pareto", alphas, cov_p, se_p)
+report("Student-t", dfs, cov_t, se_t)
+report("OU", thetas, cov_o, se_o)
+report("fGn", Hs, cov_h, se_h)
+
+# End
