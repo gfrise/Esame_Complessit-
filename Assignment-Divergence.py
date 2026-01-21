@@ -154,10 +154,8 @@ for alpha in [0.4,1.0,5.0,20.0]:
     else: desc += " ~Normal"
     experiments.append((m, summarize_bootstrap(m,desc,original=x)))
 
-# ------------------------------
-# 3) Esegui esperimenti
-# ------------------------------
+
+# Esegui 
 for means, summary in experiments:
-    print_summary(summary)             # stampa ordinata su console
-    # chiamata corretta alla funzione di plotting che usa summary
+    print_summary(summary)             
     plot_with_stats(summary["label"], means, summary, bins)

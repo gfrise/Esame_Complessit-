@@ -1,220 +1,95 @@
-# bootstrap_coverage_simple.py
-"""
-Semplice test di coverage del percentile bootstrap per la media,
-variando parametri: Pareto alpha, Student-t df, OU theta, fGn H.
-
-Salva: nessun file, stampa in console e mostra figure.
-
-Defaults (modifica in cima):
-- n: dimensione campione per replica
-- B: bootstrap replicates per replica
-- R: numero di repliche Monte Carlo per ogni valore di parametro
-"""
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
 from scipy.linalg import toeplitz, cholesky
 
-# -----------------------
-# PARAMETRI UTENTE (modifica qui)
-# -----------------------
-n = 200           # sample size per replicate
-B = 1000          # bootstrap replicates per sample
-R = 500           # Monte Carlo replicates per each parameter value
-alpha_ci = 0.05   # nominal alpha (5% -> 95% CI)
-seed = 1234
-# -----------------------
+# parametri
+n, B, R = 200, 100, 500
+alpha = 0.05
+rng = np.random.default_rng(1234)
 
-rng = np.random.default_rng(seed)
+# generatori
+def pareto(a):
+    return (1-rng.random(n))**(-1/a)
 
+def student(df):
+    return rng.standard_t(df, n)
 
-# -----------------------
-# generatori (signature: gen(param, rng, n) -> array length n)
-# -----------------------
-def pareto_gen(alpha, rng, n):
-    u = rng.random(n)
-    return (1.0 - u) ** (-1.0 / alpha)  # support [1, inf)
-
-def student_t_gen(df, rng, n):
-    return rng.standard_t(df, size=n)
-
-def ou_gen(theta, rng, n):
-    # discrete OU-like process with gaussian noise (Euler)
+def ou(th):
     x = np.zeros(n)
-    for t in range(1, n):
-        x[t] = x[t-1] + theta * (0.0 - x[t-1]) + rng.normal()
+    for t in range(1,n):
+        x[t] = x[t-1] - th*x[t-1] + rng.normal()
     return x
 
-def fgn_gen(H, rng, n):
-    # fractional Gaussian noise via Cholesky of covariance (n moderate)
-    # cov[k] = gamma(k) for k=0..n-1 where gamma is auto-cov of fGn increments
-    gamma = lambda k: 0.5 * (abs(k+1)**(2*H) - 2*abs(k)**(2*H) + abs(k-1)**(2*H))
-    cov = np.array([gamma(k) for k in range(n)])
-    L = cholesky(toeplitz(cov), lower=True)
+def fgn(H):
+    g = lambda k: 0.5*(abs(k+1)**(2*H)-2*abs(k)**(2*H)+abs(k-1)**(2*H))
+    L = cholesky(toeplitz([g(k) for k in range(n)]), lower=True)
     return L @ rng.normal(size=n)
 
+# bootstrap CI
+def boot_ci(x):
+    idx = rng.integers(0,n,(B,n))
+    m = x[idx].mean(1)
+    return np.percentile(m,[100*alpha/2,100*(1-alpha/2)])
 
-# -----------------------
-# funzione per calcolare bootstrap percentile CI della media
-# -----------------------
-def bootstrap_percentile_ci_mean(x, B, rng, alpha=0.05):
-    n = len(x)
-    idx = rng.integers(0, n, size=(B, n))
-    rep_means = x[idx].mean(axis=1)
-    lo = np.percentile(rep_means, 100 * (alpha/2.0))
-    hi = np.percentile(rep_means, 100 * (1 - alpha/2.0))
-    return lo, hi
+# coverage
+def coverage(gen, mu, grid):
+    cov, se = [], []
+    for p in grid:
+        if not np.isfinite(mu(p)):
+            cov.append(np.nan); se.append(np.nan); continue
+        hit = sum(boot_ci(gen(p))[0] <= mu(p) <= boot_ci(gen(p))[1]
+                  for _ in range(R))
+        c = hit/R
+        cov.append(c)
+        se.append(np.sqrt(c*(1-c)/R))
+    return np.array(cov), np.array(se)
 
+# medie vere
+mu_p  = lambda a: np.nan if a<=1 else a/(a-1)
+mu_t  = lambda d: np.nan if d<=1 else 0.0
+mu_0  = lambda _: 0.0
 
-# -----------------------
-# funzioni helper: true mean (analitico quando possibile, altrimenti stima grossa)
-# -----------------------
-def true_mean_pareto(alpha):
-    if alpha <= 1.0:
-        return np.nan  # mean undefined
-    return alpha / (alpha - 1.0)  # xm = 1
+# griglie
+alphas = np.linspace(0.6,8,25)
+dfs    = np.linspace(1.1,30,25)
+thetas = np.linspace(0.01,2,25)
+Hs     = np.r_[np.linspace(0.01,0.5,15),
+               np.linspace(0.5,0.99,15),
+            #    np.linspace(0.95,0.99,5)
+               ]
 
-def true_mean_student(df):
-    if df <= 1.0:
-        return np.nan
-    return 0.0
+# simulazioni
+cov_p,se_p = coverage(pareto, mu_p, alphas)
+cov_t,se_t = coverage(student,mu_t, dfs)
+cov_o,se_o = coverage(ou,     mu_0, thetas)
+cov_h,se_h = coverage(fgn,    mu_0, Hs)
 
-def true_mean_ou(theta):
-    return 0.0
+# plot
+fig, ax = plt.subplots(2,2, figsize=(14,9), constrained_layout=True)
 
-def true_mean_fgn(H):
-    return 0.0
+def plot_coverage(param, cov, se, xlabel, title):
+    fig, ax = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
 
+    # Coverage
+    ax[0].errorbar(param, cov, yerr=se,
+                   fmt='o-', markersize=4, lw=2,
+                   ecolor='gray', elinewidth=1.2, capsize=3,
+                   color='#1f77b4')
+    ax[0].axhline(1-alpha, ls='--', lw=1.5, alpha=0.5)
+    ax[0].set_xlabel(xlabel)
+    ax[0].set_ylabel('Coverage')
+    ax[0].set_ylim(-0.02, 1.02)
+    ax[0].grid(alpha=0.3)
 
-# -----------------------
-# coverage per una lista di parametri (sweep)
-# -----------------------
-def sweep_coverage(gen, true_mean_func, params, label, n, B, R, rng):
-    coverages = []
-    mc_se = []
-    for p in params:
-        true_val = true_mean_func(p)
-        # if true mean undefined (e.g. Pareto alpha<=1), mark NaN and skip heavy sim
-        if not np.isfinite(true_val):
-            coverages.append(np.nan)
-            mc_se.append(np.nan)
-            continue
+    # Coverage bias
+    ax[1].errorbar(param, cov-(1-alpha), yerr=se,
+                   fmt='o-', markersize=4, lw=2,
+                   ecolor='gray', elinewidth=1.2, capsize=3,
+                   color='#ff7f0e')
+    ax[1].axhline(0, ls='--', lw=1.5, alpha=0.5)
+    ax[1].set_xlabel(xlabel)
+    ax[1].set_ylabel('Coverage − nominal')
+    ax[1].grid(alpha=0.3)
 
-        count = 0
-        for r in range(R):
-            x = gen(p, rng, n)
-            lo, hi = bootstrap_percentile_ci_mean(x, B, rng, alpha=alpha_ci)
-            if lo <= true_val <= hi:
-                count += 1
-        prop = count / R
-        coverages.append(prop)
-        mc_se.append(np.sqrt(prop * (1 - prop) / max(1, R)))
-    return np.array(coverages), np.array(mc_se)
-
-
-# -----------------------
-# impostiamo le griglie (numericamente sicure con linspace)
-# -----------------------
-alphas = np.linspace(0.6, 8.0, 25)         # include regime problematico <1
-dfs = np.linspace(1.1, 30.0, 25)           # start >1 because mean undefined for df<=1
-thetas = np.linspace(0.01, 2.0, 25)        # OU theta
-Hs = np.concatenate([np.linspace(0.5,0.8,12), np.linspace(0.8,0.95,8), np.linspace(0.95,0.99,5)])
-
-# -----------------------
-# esegui sweep (stampa tempi parziali)
-# -----------------------
-import time
-t0 = time.time()
-print("Running Pareto sweep...")
-cov_p, se_p = sweep_coverage(pareto_gen, true_mean_pareto, alphas, "Pareto", n, B, R, rng)
-print("Done. Time:", time.time()-t0, "s")
-
-t0 = time.time()
-print("Running Student-t sweep...")
-cov_t, se_t = sweep_coverage(student_t_gen, true_mean_student, dfs, "Student-t", n, B, R, rng)
-print("Done. Time:", time.time()-t0, "s")
-
-t0 = time.time()
-print("Running OU sweep...")
-cov_o, se_o = sweep_coverage(ou_gen, true_mean_ou, thetas, "OU", n, B, R, rng)
-print("Done. Time:", time.time()-t0, "s")
-
-t0 = time.time()
-print("Running fGn sweep (Cholesky; moderate n recommended)...")
-# for fGn, keep n smaller to keep Cholesky feasible; re-use same n
-cov_h, se_h = sweep_coverage(fgn_gen, true_mean_fgn, Hs, "fGn", n, B, R, rng)
-print("Done. Time:", time.time()-t0, "s")
-
-
-# -----------------------
-# plotting: 2x2 figure elegante e scientifica
-# -----------------------
-plt.rcParams.update({
-    "figure.figsize": (14, 9),
-    "axes.titlesize": 12,
-    "axes.labelsize": 11,
-    "legend.fontsize": 10,
-    "lines.linewidth": 1.6,
-})
-
-fig, axes = plt.subplots(2, 2, constrained_layout=True)
-
-# Pareto
-ax = axes[0,0]
-ax.errorbar(alphas, cov_p, yerr=se_p, fmt='-o', capsize=3, markersize=4, color='#d95f02')
-ax.axhline(1-alpha_ci, color='red', linestyle='--', label=f'nominal {int((1-alpha_ci)*100)}%')
-ax.set_xlabel('Pareto α')
-ax.set_ylabel('Empirical coverage')
-ax.set_title('Pareto: coverage vs α (percentile bootstrap CI for mean)')
-ax.set_ylim(-0.02,1.02)
-ax.grid(alpha=0.25)
-ax.legend(loc='lower right')
-
-# Student-t
-ax = axes[0,1]
-ax.errorbar(dfs, cov_t, yerr=se_t, fmt='-o', capsize=3, markersize=4, color='#1f77b4')
-ax.axhline(1-alpha_ci, color='red', linestyle='--')
-ax.set_xlabel('Student-t df')
-ax.set_title('Student-t: coverage vs df')
-ax.set_ylim(-0.02,1.02)
-ax.grid(alpha=0.25)
-
-# OU
-ax = axes[1,0]
-ax.errorbar(thetas, cov_o, yerr=se_o, fmt='-o', capsize=3, markersize=4, color='#2ca02c')
-ax.axhline(1-alpha_ci, color='red', linestyle='--')
-ax.set_xlabel('OU θ')
-ax.set_title('OU: coverage vs θ (dependence effect)')
-ax.set_ylim(-0.02,1.02)
-ax.grid(alpha=0.25)
-
-# fGn
-ax = axes[1,1]
-ax.errorbar(Hs, cov_h, yerr=se_h, fmt='-o', capsize=3, markersize=4, color='#9467bd')
-ax.axhline(1-alpha_ci, color='red', linestyle='--')
-ax.set_xlabel('H (fGn)')
-ax.set_title('fGn: coverage vs H (long-range dependence)')
-ax.set_ylim(-0.02,1.02)
-ax.grid(alpha=0.25)
-
-plt.suptitle('Empirical coverage of percentile bootstrap CI for the mean\n(n=%d, B=%d, R=%d) ' % (n, B, R), fontsize=14, fontweight='bold')
-plt.show()
-
-
-# -----------------------
-# Breve report in console
-# -----------------------
-def report(name, params, cov, se):
-    print(f"\n{name}:")
-    for p, c, s in zip(params, cov, se):
-        if np.isnan(c):
-            print(f" param={p:.3g} -> coverage=NA (true mean undefined)")
-        else:
-            print(f" param={p:.3g} -> coverage={c:.3f} ± {s:.3f}")
-
-report("Pareto", alphas, cov_p, se_p)
-report("Student-t", dfs, cov_t, se_t)
-report("OU", thetas, cov_o, se_o)
-report("fGn", Hs, cov_h, se_h)
-
-# End
+    fig.suptitle(title, fontsize=16, fontweight='bold')
+    plt.show()
