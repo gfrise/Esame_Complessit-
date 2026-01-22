@@ -3,93 +3,88 @@ import matplotlib.pyplot as plt
 from scipy.linalg import toeplitz, cholesky
 
 # parametri
-n, B, R = 200, 100, 500
+n, B, R = 200, 200, 500
 alpha = 0.05
 rng = np.random.default_rng(1234)
 
 # generatori
 def pareto(a):
-    return (1-rng.random(n))**(-1/a)
+    return (1 - rng.random(n)) ** (-1 / a)
 
 def student(df):
     return rng.standard_t(df, n)
 
 def ou(th):
     x = np.zeros(n)
-    for t in range(1,n):
-        x[t] = x[t-1] - th*x[t-1] + rng.normal()
+    for t in range(1, n):
+        x[t] = x[t-1] - th * x[t-1] + rng.normal()
     return x
 
 def fgn(H):
-    g = lambda k: 0.5*(abs(k+1)**(2*H)-2*abs(k)**(2*H)+abs(k-1)**(2*H))
+    g = lambda k: 0.5 * (abs(k+1)**(2*H) - 2*abs(k)**(2*H) + abs(k-1)**(2*H))
     L = cholesky(toeplitz([g(k) for k in range(n)]), lower=True)
     return L @ rng.normal(size=n)
 
-# bootstrap CI
+# CI bootstrap
 def boot_ci(x):
-    idx = rng.integers(0,n,(B,n))
+    idx = rng.integers(0, n, (B, n))
     m = x[idx].mean(1)
-    return np.percentile(m,[100*alpha/2,100*(1-alpha/2)])
+    return np.percentile(m, [100 * alpha/2, 100 * (1 - alpha/2)])
 
-# coverage
+# coverage (BUG FIXED: costruisco un solo CI per ripetizione)
 def coverage(gen, mu, grid):
     cov, se = [], []
     for p in grid:
         if not np.isfinite(mu(p)):
             cov.append(np.nan); se.append(np.nan); continue
-        hit = sum(boot_ci(gen(p))[0] <= mu(p) <= boot_ci(gen(p))[1]
-                  for _ in range(R))
-        c = hit/R
+        hits = 0
+        for _ in range(R):
+            lo, hi = boot_ci(gen(p))   # <-- singola chiamata, lo/hi coerenti
+            if lo <= mu(p) <= hi:
+                hits += 1
+        c = hits / R
         cov.append(c)
-        se.append(np.sqrt(c*(1-c)/R))
+        se.append(np.sqrt(c * (1 - c) / R))
     return np.array(cov), np.array(se)
 
-# medie vere
-mu_p  = lambda a: np.nan if a<=1 else a/(a-1)
-mu_t  = lambda d: np.nan if d<=1 else 0.0
-mu_0  = lambda _: 0.0
+# medie teoriche
+mu_p = lambda a: np.nan if a <= 1 else a / (a - 1)
+mu_t = lambda d: np.nan if d <= 1 else 0.0
+mu_0 = lambda _: 0.0
 
 # griglie
-alphas = np.linspace(0.6,8,25)
-dfs    = np.linspace(1.1,30,25)
-thetas = np.linspace(0.01,2,25)
-Hs     = np.r_[np.linspace(0.01,0.5,15),
-               np.linspace(0.5,0.99,15),
-            #    np.linspace(0.95,0.99,5)
-               ]
+alphas = np.linspace(0.6, 8, 25)
+dfs    = np.linspace(1.1, 30, 25)
+thetas = np.linspace(0.01, 2, 25)
+Hs     = np.r_[np.linspace(0.01, 0.5, 15), np.linspace(0.5, 0.99, 15)]
 
 # simulazioni
-cov_p,se_p = coverage(pareto, mu_p, alphas)
-cov_t,se_t = coverage(student,mu_t, dfs)
-cov_o,se_o = coverage(ou,     mu_0, thetas)
-cov_h,se_h = coverage(fgn,    mu_0, Hs)
+cov_p, se_p = coverage(pareto, mu_p, alphas)
+cov_t, se_t = coverage(student, mu_t, dfs)
+cov_o, se_o = coverage(ou, mu_0, thetas)
+cov_h, se_h = coverage(fgn, mu_0, Hs)
 
-# plot
-fig, ax = plt.subplots(2,2, figsize=(14,9), constrained_layout=True)
-
+# plot helper
 def plot_coverage(param, cov, se, xlabel, title):
     fig, ax = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
 
-    # Coverage
-    ax[0].errorbar(param, cov, yerr=se,
-                   fmt='o-', markersize=4, lw=2,
-                   ecolor='gray', elinewidth=1.2, capsize=3,
-                   color='#1f77b4')
-    ax[0].axhline(1-alpha, ls='--', lw=1.5, alpha=0.5)
-    ax[0].set_xlabel(xlabel)
-    ax[0].set_ylabel('Coverage')
-    ax[0].set_ylim(-0.02, 1.02)
-    ax[0].grid(alpha=0.3)
+    ax[0].errorbar(param, cov, yerr=se, fmt='o-', markersize=4, lw=1.5,
+                   ecolor='gray', elinewidth=1, capsize=3, color='#1f77b4')
+    ax[0].axhline(1 - alpha, ls='--', lw=1)
+    ax[0].set_xlabel(xlabel); ax[0].set_ylabel('Coverage')
+    ax[0].set_ylim(-0.02, 1.02); ax[0].grid(alpha=0.3)
 
-    # Coverage bias
-    ax[1].errorbar(param, cov-(1-alpha), yerr=se,
-                   fmt='o-', markersize=4, lw=2,
-                   ecolor='gray', elinewidth=1.2, capsize=3,
-                   color='#ff7f0e')
-    ax[1].axhline(0, ls='--', lw=1.5, alpha=0.5)
-    ax[1].set_xlabel(xlabel)
-    ax[1].set_ylabel('Coverage − nominal')
+    ax[1].errorbar(param, cov - (1 - alpha), yerr=se, fmt='o-', markersize=4, lw=1.5,
+                   ecolor='gray', elinewidth=1, capsize=3, color='#ff7f0e')
+    ax[1].axhline(0, ls='--', lw=1)
+    ax[1].set_xlabel(xlabel); ax[1].set_ylabel('Coverage − nominal')
     ax[1].grid(alpha=0.3)
 
-    fig.suptitle(title, fontsize=16, fontweight='bold')
+    fig.suptitle(title, fontsize=14)
     plt.show()
+
+# output
+plot_coverage(alphas, cov_p, se_p, 'alpha', 'Coverage — Pareto (bootstrap)')
+plot_coverage(dfs, cov_t, se_t, 'df', 'Coverage — Student-t (bootstrap)')
+plot_coverage(thetas, cov_o, se_o, 'theta', 'Coverage — OU (bootstrap)')
+plot_coverage(Hs, cov_h, se_h, 'H', 'Coverage — fGN (bootstrap)')
