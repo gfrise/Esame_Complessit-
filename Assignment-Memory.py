@@ -5,7 +5,7 @@ from scipy.stats import norm
 from scipy.linalg import toeplitz, cholesky
 
 # Parameters and Boostratp
-rng = np.random.default_rng(482)
+rng = np.random.default_rng(42)
 
 n = 3000
 B = 3000
@@ -21,14 +21,14 @@ def print_summary(label, x, m):
     sd = np.std(x, ddof=1)
     print(f"\n--- {label} ---")
     print(f"Mean (original)      {np.mean(x):.3f}")
-    print(f"Mean (boot)          {np.mean(m):.3f}")
+    print(f"Mean (bootstrap)          {np.mean(m):.3f}")
     print(f"Std (original)       {sd:.3f}")
-    print(f"Std (boot)            {np.std(m,ddof=1):.3f}")
-    print(f"Std theoretical      {sd/np.sqrt(len(x)):.3f}")
+    print(f"Std (bootstrap)            {np.std(m,ddof=1):.3f}")
+    print(f"Std (theoretical)      {sd/np.sqrt(len(x)):.3f}")
     print(f"2.5%                 {np.percentile(m,2.5):.3f}")
     print(f"97.5%                {np.percentile(m,97.5):.3f}")
     print(f"Skew                 {stats.skew(m):.3f}")
-    print(f"Kurt (ex)        {stats.kurtosis(m):.3f}")
+    print(f"Kurt (excess)        {stats.kurtosis(m):.3f}")
 
 
 # plot
@@ -47,23 +47,23 @@ def plot_boot(title, m, x=None):
 
     # stats
     rows = [
-        ("Mean (boot)", mu),
-        ("SE (boot)", sd),
+       ("Mean (bootstrap)", mu),
+        ("Std (bootstrap)", sd),
         ("2.5%", p1),
         ("97.5%", p2),
         ("Skew", stats.skew(m)),
-        ("Kurtosis (ex)", stats.kurtosis(m)),
+        ("Kurtosis (excess)", stats.kurtosis(m)),
     ]
 
     if x is not None:
         sx = np.std(x, ddof=1)
         rows = [
-            ("Mean (orig)", np.mean(x)),
-            ("Std (orig)", sx),
-            ("Std theor", sx/np.sqrt(len(x))),
+            ("Mean (original)", np.mean(x)),
+            ("Std (original)", sx),
+            ("Std (theoretical)", sx/np.sqrt(len(x))),
         ] + rows
 
-    txt = "\n".join(f"{k:<14} {v:.4f}" for k,v in rows)
+    txt = "\n".join(f"{k:<19} {v:.4f}" for k,v in rows)
 
     plt.text(0.02, 0.98, txt,
              transform=plt.gca().transAxes,
@@ -73,8 +73,8 @@ def plot_boot(title, m, x=None):
 
 
     plt.title(title)
-    plt.xlabel("bootstrap means")
-    plt.ylabel("density")
+    plt.xlabel("Bootstrap Means")
+    plt.ylabel("Density")
     plt.tight_layout()
     plt.show()
 

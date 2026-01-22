@@ -20,14 +20,14 @@ def print_summary(label, x, m):
     sd = np.std(x, ddof=1)
     print(f"\n--- {label} ---")
     print(f"Mean (original)      {np.mean(x):.3f}")
-    print(f"Mean (boot)          {np.mean(m):.3f}")
+    print(f"Mean (bootstrap)          {np.mean(m):.3f}")
     print(f"Std (original)       {sd:.3f}")
-    print(f"Std (boot)            {np.std(m,ddof=1):.3f}")
-    print(f"Std theoretical      {sd/np.sqrt(len(x)):.3f}")
+    print(f"Std (bootstrap)            {np.std(m,ddof=1):.3f}")
+    print(f"Std (theoretical)      {sd/np.sqrt(len(x)):.3f}")
     print(f"2.5%                 {np.percentile(m,2.5):.3f}")
     print(f"97.5%                {np.percentile(m,97.5):.3f}")
     print(f"Skew                 {stats.skew(m):.3f}")
-    print(f"Kurt (ex)        {stats.kurtosis(m):.3f}")
+    print(f"Kurt (excess)        {stats.kurtosis(m):.3f}")
 
 
 # Plot
@@ -46,23 +46,23 @@ def plot_boot(title, m, x=None):
 
     #stats
     rows = [
-        ("Mean (boot)", mu),
-        ("SE (boot)", sd),
+        ("Mean (bootstrap)", mu),
+        ("Std (bootstrap)", sd),
         ("2.5%", p1),
         ("97.5%", p2),
         ("Skew", stats.skew(m)),
-        ("Kurtosis (ex)", stats.kurtosis(m)),
+        ("Kurtosis (excess)", stats.kurtosis(m)),
     ]
 
     if x is not None:
         sx = np.std(x, ddof=1)
         rows = [
-            ("Mean (orig)", np.mean(x)),
-            ("Std (orig)", sx),
-            ("Std theor", sx/np.sqrt(len(x))),
+            ("Mean (original)", np.mean(x)),
+            ("Std (original)", sx),
+            ("Std (theoretical)", sx/np.sqrt(len(x))),
         ] + rows
 
-    txt = "\n".join(f"{k:<14} {v:.4f}" for k,v in rows)
+    txt = "\n".join(f"{k:<19} {v:.4f}" for k,v in rows)
 
     plt.text(0.02, 0.98, txt,
              transform=plt.gca().transAxes,
@@ -72,8 +72,8 @@ def plot_boot(title, m, x=None):
 
 
     plt.title(title)
-    plt.xlabel("bootstrap means")
-    plt.ylabel("density")
+    plt.xlabel("Bootstrap Means")
+    plt.ylabel("Density")
     plt.tight_layout()
     plt.show()
 
@@ -86,14 +86,14 @@ print_summary("Normal(0,1)", x, m)
 plot_boot("Normal(0,1)", m, x)
 
 # Student-t
-for nu in [0.4, 1.0, 5.0, 20.0]:
+for nu in [0.4, 1.1, 5.0, 20.0]:
     x = rng.standard_t(nu, n)
     m = bootstrap_means(x)
 
     label = f"t-Student(df={nu})"
-    if nu < 1: label += " no mean"
-    elif nu < 2: label += " inf var"
-    elif nu < 15: label += " finite var"
+    if nu < 1: label += " No mean"
+    elif nu < 2: label += " Infinite variance"
+    elif nu < 15: label += " Finite variance"
     else: label += " ~Normal"
 
     print_summary(label, x, m)
@@ -103,14 +103,14 @@ for nu in [0.4, 1.0, 5.0, 20.0]:
 def pareto(a):
     return (1 - rng.random(n))**(-1/a)
 
-for a in [0.4, 1.0, 5.0, 20.0]:
+for a in [0.4, 1.1, 5.0, 20.0]:
     x = pareto(a)
     m = bootstrap_means(x)
 
     label = f"Pareto(alpha={a})"
-    if a < 1: label += " no mean"
-    elif a < 2: label += " inf var"
-    elif a < 15: label += " finite var"
+    if a < 1: label += " No mean"
+    elif a < 2: label += " Infinite variance"
+    elif a < 15: label += " Finite variance"
     else: label += " ~Normal"
 
     print_summary(label, x, m)
