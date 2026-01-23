@@ -12,7 +12,7 @@ std = 0.01
 
 def ou():
     for i in range(1,n):
-        x[i]=x[i-1]-y*dt*(x[i-1])+std*np.random.normal(0,1)
+        x[i]=x[i-1]-y*dt*(3-x[i-1])+std*np.random.normal(0,1)
     return x
 
 plt.plot(x)
