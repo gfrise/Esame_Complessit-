@@ -1,13 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import toeplitz, cholesky
+from scipy import stats
 
-# parametri
-n, B, R = 200, 200, 500
+# ===================== PARAMETRI =====================
+n, B, R = 500, 500, 500
 alpha = 0.05
-rng = np.random.default_rng(1234)
+rng = np.random.default_rng(42)
 
-# generatori
+# ===================== GENERATORI =====================
 def pareto(a):
     return (1 - rng.random(n)) ** (-1 / a)
 
@@ -21,70 +22,128 @@ def ou(th):
     return x
 
 def fgn(H):
-    g = lambda k: 0.5 * (abs(k+1)**(2*H) - 2*abs(k)**(2*H) + abs(k-1)**(2*H))
+    g = lambda k: 0.5 * (abs(k+1)**(2*H)
+                        - 2*abs(k)**(2*H)
+                        + abs(k-1)**(2*H))
     L = cholesky(toeplitz([g(k) for k in range(n)]), lower=True)
     return L @ rng.normal(size=n)
 
-# CI bootstrap
-def boot_ci(x):
-    idx = rng.integers(0, n, (B, n))
-    m = x[idx].mean(1)
-    return np.percentile(m, [100 * alpha/2, 100 * (1 - alpha/2)])
-
-# coverage (BUG FIXED: costruisco un solo CI per ripetizione)
-def coverage(gen, mu, grid):
-    cov, se = [], []
-    for p in grid:
-        if not np.isfinite(mu(p)):
-            cov.append(np.nan); se.append(np.nan); continue
-        hits = 0
-        for _ in range(R):
-            lo, hi = boot_ci(gen(p))   # <-- singola chiamata, lo/hi coerenti
-            if lo <= mu(p) <= hi:
-                hits += 1
-        c = hits / R
-        cov.append(c)
-        se.append(np.sqrt(c * (1 - c) / R))
-    return np.array(cov), np.array(se)
-
-# medie teoriche
+# ===================== MEDIE TEORICHE =====================
 mu_p = lambda a: np.nan if a <= 1 else a / (a - 1)
 mu_t = lambda d: np.nan if d <= 1 else 0.0
 mu_0 = lambda _: 0.0
 
-# griglie
-alphas = np.linspace(0.6, 8, 25)
-dfs    = np.linspace(1.1, 30, 25)
-thetas = np.linspace(0.01, 2, 25)
-Hs     = np.r_[np.linspace(0.01, 0.5, 15), np.linspace(0.5, 0.99, 15)]
+# ===================== BOOTSTRAP =====================
+def bootstrap_means(x):
+    idx = rng.integers(0, n, (B, n))
+    return x[idx].mean(axis=1)
 
-# simulazioni
-cov_p, se_p = coverage(pareto, mu_p, alphas)
-cov_t, se_t = coverage(student, mu_t, dfs)
-cov_o, se_o = coverage(ou, mu_0, thetas)
-cov_h, se_h = coverage(fgn, mu_0, Hs)
+# ===================== COVERAGE + PERCENTILI =====================
+def coverage_and_percentiles(gen, mu, grid):
+    cov, se = [], []
+    pct = []
 
-# plot helper
-def plot_coverage(param, cov, se, xlabel, title):
-    fig, ax = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
+    for p in grid:
+        true = mu(p)
+        if not np.isfinite(true):
+            cov.append(np.nan)
+            se.append(np.nan)
+            pct.append(np.full(R, np.nan))
+            continue
 
-    ax[0].errorbar(param, cov, yerr=se, fmt='o-', markersize=4, lw=1.5,
-                   ecolor='gray', elinewidth=1, capsize=3, color='#1f77b4')
+        hits = 0
+        perc = np.empty(R)
+
+        for r in range(R):
+            x = gen(p)
+            m = bootstrap_means(x)
+            lo, hi = np.percentile(m, [100*alpha/2, 100*(1-alpha/2)])
+            if lo <= true <= hi:
+                hits += 1
+            perc[r] = np.mean(m <= true)
+
+        c = hits / R
+        cov.append(c)
+        se.append(np.sqrt(c * (1 - c) / R))
+        pct.append(perc)
+
+    return np.array(cov), np.array(se), np.vstack(pct)
+
+# ===================== AFFIDABILITÀ (CvM) =====================
+def cramervonmises_w2(u):
+    u = u[~np.isnan(u)]
+    n = u.size
+    if n == 0:
+        return np.nan
+    us = np.sort(u)
+    i = np.arange(1, n+1)
+    expected = (2*i - 1) / (2*n)
+    return 1/(12*n) + np.sum((us - expected)**2)
+
+def affidabilita_from_percentiles(pct):
+    w2 = np.array([cramervonmises_w2(row) for row in pct])
+
+    finite = np.isfinite(w2)
+    if finite.sum() == 0:
+        return np.full_like(w2, np.nan)
+
+    wmin, wmax = w2[finite].min(), w2[finite].max()
+    if np.isclose(wmin, wmax):
+        A = np.ones_like(w2)
+    else:
+        A = 1 - (w2 - wmin) / (wmax - wmin)
+
+    A[~finite] = np.nan
+    return A
+
+# ===================== PLOT =====================
+def plot_results(param, cov, se, pct, xlabel, title):
+    A = affidabilita_from_percentiles(pct)
+
+    fig, ax = plt.subplots(1, 2, figsize=(14,5), constrained_layout=True)
+
+    # -------- Coverage (blu) --------
+    ax[0].errorbar(param, cov, yerr=se, fmt='o-', lw=1.5,
+                   markersize=4, capsize=3)
     ax[0].axhline(1 - alpha, ls='--', lw=1)
-    ax[0].set_xlabel(xlabel); ax[0].set_ylabel('Coverage')
-    ax[0].set_ylim(-0.02, 1.02); ax[0].grid(alpha=0.3)
+    ax[0].set_ylim(-0.02, 1.02)
+    ax[0].set_xlabel(xlabel)
+    ax[0].set_ylabel('Coverage')
+    ax[0].grid(alpha=0.3)
+    ax[0].set_title('Coverage')
 
-    ax[1].errorbar(param, cov - (1 - alpha), yerr=se, fmt='o-', markersize=4, lw=1.5,
-                   ecolor='gray', elinewidth=1, capsize=3, color='#ff7f0e')
-    ax[1].axhline(0, ls='--', lw=1)
-    ax[1].set_xlabel(xlabel); ax[1].set_ylabel('Coverage − nominal')
+    # -------- Affidabilità (CvM) --------
+    ax[1].plot(param, A, 'o-', lw=1.6, markersize=5)
+    ax[1].set_ylim(-0.02, 1.02)
+    ax[1].set_xlabel(xlabel)
+    ax[1].set_ylabel('Affidabilità percentili')
     ax[1].grid(alpha=0.3)
+
+    # bande visive
+    ax[1].axhspan(0.8, 1.02, color='#e6f5e6', alpha=0.6)
+    ax[1].axhspan(0.6, 0.8, color='#fff4cc', alpha=0.6)
+    ax[1].axhspan(-0.02, 0.6, color='#fee0d2', alpha=0.6)
+
+    ax[1].set_title('Affidabilità (CvM → Uniformità percentili)')
 
     fig.suptitle(title, fontsize=14)
     plt.show()
 
-# output
-plot_coverage(alphas, cov_p, se_p, 'alpha', 'Coverage — Pareto (bootstrap)')
-plot_coverage(dfs, cov_t, se_t, 'df', 'Coverage — Student-t (bootstrap)')
-plot_coverage(thetas, cov_o, se_o, 'theta', 'Coverage — OU (bootstrap)')
-plot_coverage(Hs, cov_h, se_h, 'H', 'Coverage — fGN (bootstrap)')
+# ===================== GRIGLIE =====================
+alphas = np.linspace(0.6, 8, 25)
+dfs    = np.linspace(0.6, 25, 25)
+thetas = np.linspace(0.01, 2, 25)
+Hs     = np.r_[np.linspace(0.01, 0.5, 15),
+               np.linspace(0.5, 0.99, 15)]
+
+# ===================== SIMULAZIONI =====================
+cov_p, se_p, pct_p = coverage_and_percentiles(pareto, mu_p, alphas)
+cov_t, se_t, pct_t = coverage_and_percentiles(student, mu_t, dfs)
+cov_o, se_o, pct_o = coverage_and_percentiles(ou, mu_0, thetas)
+cov_h, se_h, pct_h = coverage_and_percentiles(fgn, mu_0, Hs)
+
+# ===================== OUTPUT =====================
+plot_results(alphas, cov_p, se_p, pct_p, 'alpha', 'Pareto (bootstrap)')
+plot_results(dfs,    cov_t, se_t, pct_t, 'df',    'Student-t (bootstrap)')
+plot_results(thetas, cov_o, se_o, pct_o, 'theta', 'OU (bootstrap)')
+plot_results(Hs,     cov_h, se_h, pct_h, 'H',     'fGN (bootstrap)')
