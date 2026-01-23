@@ -85,7 +85,7 @@ def plot_shape(param, sm, ss, km, ks, xlabel, title):
 
 
 #Execution
-n, B, R = 3000, 3000, 100
+n, B, R = 300, 300, 100
 
 alphas = np.linspace(0.4, 20.0, 100)
 s_mean, s_std, k_mean, k_std = run_experiment(alphas, gen_pareto, n, B, R)
