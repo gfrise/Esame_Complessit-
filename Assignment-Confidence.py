@@ -109,7 +109,7 @@ def plot_results(param, cov, se, pct, xlabel, title):
     axs[0].fill_between(param, lower, upper, where=np.isfinite(lower),
                         color=color_cov, alpha=0.08, linewidth=0, zorder=1)
     axs[0].errorbar(param, cov, yerr=se, fmt='none',
-                    ecolor=color_cov, elinewidth=1.6, capsize=4, alpha=0.95, zorder=2)
+                    ecolor=color_cov, elinewidth=1.6, capsize=4, alpha=0.95, zorder=2, label='Confidence')
     axs[0].plot(param, cov, '-', lw=1.1, color=color_cov, zorder=3)
     axs[0].scatter(param, cov, s=40, facecolor='white', edgecolor=color_cov, linewidth=1.2, zorder=4)
 
@@ -118,13 +118,14 @@ def plot_results(param, cov, se, pct, xlabel, title):
     except NameError:
         ref = 0.95
     axs[0].axhline(ref, ls='--', color='gray', lw=1.2, alpha=0.9, zorder=5)
-    axs[0].set_ylim(-0.02, 1.02)
+    axs[0].set_ylim(-0.02, 1.02) 
     axs[0].set_xlabel(xlabel)
     axs[0].grid(alpha=0.22, linestyle='--')
+    axs[0].legend(edgecolor='lightgray', facecolor='white', framealpha=1)
 
     color_rel = '#d62728'
     axs[1].plot(param, A, 'o-', lw=1.6, markersize=5,
-                color=color_rel, markerfacecolor='white', markeredgewidth=1.2, markeredgecolor=color_rel, zorder=3)
+                color=color_rel, markerfacecolor='white', markeredgewidth=1.2, markeredgecolor=color_rel, zorder=3, label='Reliability')
     axs[1].set_ylim(-0.02, 1.02)
     axs[1].set_xlabel(xlabel)
     axs[1].axhspan(0.8, 1.02, color='#e6f5e6', alpha=0.45, zorder=0)
@@ -135,6 +136,7 @@ def plot_results(param, cov, se, pct, xlabel, title):
         axs[1].axhline(y, ls='--', color='gray', lw=1.4, alpha=0.9, zorder=4)
 
     axs[1].grid(axis='y', alpha=0.22, linestyle='--')
+    axs[1].legend(edgecolor='lightgray', facecolor='white', framealpha=1)
 
     fig.suptitle(title, fontsize=16, fontweight='bold')
     plt.show()
