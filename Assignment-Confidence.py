@@ -6,7 +6,7 @@ from scipy.linalg import toeplitz, cholesky
 seed = 42
 rng = np.random.default_rng(seed)
 
-n, B, R = 30, 30, 10
+n, B, R = 300, 300, 100
 
 alpha = 0.05
 
