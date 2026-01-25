@@ -6,7 +6,7 @@ from scipy.linalg import toeplitz, cholesky
 seed = 42
 rng = np.random.default_rng(seed)
 
-n, B, R = 300, 300, 100
+n, B, R = 30, 30, 10
 
 alpha = 0.05
 
@@ -101,56 +101,40 @@ def affidabilita_from_percentiles(pct):
 # Plot
 def plot_results(param, cov, se, pct, xlabel, title):
     A = affidabilita_from_percentiles(pct)
-
     fig, axs = plt.subplots(1, 2, figsize=(14, 5), constrained_layout=True)
 
     color_cov = '#1f77b4'
-    lower = cov - se
-    upper = cov + se
+    lower, upper = cov - se, cov + se
 
-    axs[0].fill_between(
-        param, lower, upper,
-        where=np.isfinite(lower),
-        color=color_cov, alpha=0.12, linewidth=0
-    )
+    axs[0].fill_between(param, lower, upper, where=np.isfinite(lower),
+                        color=color_cov, alpha=0.08, linewidth=0, zorder=1)
+    axs[0].errorbar(param, cov, yerr=se, fmt='none',
+                    ecolor=color_cov, elinewidth=1.6, capsize=4, alpha=0.95, zorder=2)
+    axs[0].plot(param, cov, '-', lw=1.1, color=color_cov, zorder=3)
+    axs[0].scatter(param, cov, s=40, facecolor='white', edgecolor=color_cov, linewidth=1.2, zorder=4)
 
-    axs[0].errorbar(
-        param, cov, yerr=se,
-        fmt='o-', markersize=6, lw=2,
-        ecolor='lightgray', elinewidth=1.5, capsize=4,
-        color=color_cov,
-        markerfacecolor='white',
-        markeredgewidth=1.2,
-        markeredgecolor=color_cov
-    )
-
-    ref = 1 - alpha
-    axs[0].axhline(ref, color='lightgray', lw=1.2)
-
+    try:
+        ref = 1 - alpha
+    except NameError:
+        ref = 0.95
+    axs[0].axhline(ref, ls='--', color='gray', lw=1.2, alpha=0.9, zorder=5)
     axs[0].set_ylim(-0.02, 1.02)
     axs[0].set_xlabel(xlabel)
-    axs[0].grid(alpha=0.25, linestyle='--')
+    axs[0].grid(alpha=0.22, linestyle='--')
 
     color_rel = '#d62728'
-    axs[1].plot(
-        param, A, 'o-', lw=2, markersize=6,
-        color=color_rel,
-        markerfacecolor='white',
-        markeredgewidth=1.2,
-        markeredgecolor=color_rel
-    )
-
+    axs[1].plot(param, A, 'o-', lw=1.6, markersize=5,
+                color=color_rel, markerfacecolor='white', markeredgewidth=1.2, markeredgecolor=color_rel, zorder=3)
     axs[1].set_ylim(-0.02, 1.02)
     axs[1].set_xlabel(xlabel)
+    axs[1].axhspan(0.8, 1.02, color='#e6f5e6', alpha=0.45, zorder=0)
+    axs[1].axhspan(0.6, 0.8,  color='#fff4cc', alpha=0.45, zorder=0)
+    axs[1].axhspan(-0.02, 0.6, color='#fee0d2', alpha=0.45, zorder=0)
 
-    axs[1].axhspan(0.8, 1.02, color='#e6f5e6', alpha=0.45)
-    axs[1].axhspan(0.6, 0.8,  color='#fff4cc', alpha=0.45)
-    axs[1].axhspan(-0.02, 0.6, color='#fee0d2', alpha=0.45)
+    for y in (0.6, 0.8, 0.90, 0.95):
+        axs[1].axhline(y, ls='--', color='gray', lw=1.4, alpha=0.9, zorder=4)
 
-    axs[1].axhline(0.6, color='#cfcfcf', lw=1.6)
-    axs[1].axhline(0.8, color='#cfcfcf', lw=1.6)
-
-    axs[1].grid(axis='y', alpha=0.25, linestyle='--')
+    axs[1].grid(axis='y', alpha=0.22, linestyle='--')
 
     fig.suptitle(title, fontsize=16, fontweight='bold')
     plt.show()
