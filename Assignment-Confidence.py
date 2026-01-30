@@ -19,8 +19,9 @@ def gen_student(df, n):
 
 def gen_ou(theta, n):
     x = np.zeros(n)
+    dt = 0.1
     for t in range(1, n):
-        x[t] = x[t-1] - theta * x[t-1] + rng.normal()
+        x[t] = x[t-1] - theta * x[t-1]*dt + rng.normal(0,np.sqrt(dt))
     return x
 
 def gen_fgn(H, n):
@@ -144,7 +145,7 @@ def plot_results(param, cov, se, pct, xlabel, title):
 # Free params of distributions
 alphas = np.linspace(0.4, 20, 100)
 dfs    = np.linspace(0.4, 20, 100)
-thetas = np.linspace(0.01, 2, 100)
+thetas = np.linspace(0.01, 10, 100)
 Hs     = np.linspace(0.5, 0.99999, 100)
 
 # Execution

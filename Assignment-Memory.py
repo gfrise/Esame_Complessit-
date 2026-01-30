@@ -82,8 +82,9 @@ def plot_boot(title, m, x=None):
 # EXPERIMENTS
 def ornstein_uhlenbeck(theta, n):
     x = np.zeros(n)
+    dt = 0.1
     for t in range(1, n):
-        x[t] = x[t-1] + theta*(0.0 - x[t-1]) + rng.normal()
+        x[t] = x[t-1] + theta*(0.0 - x[t-1])*dt + rng.normal(0,np.sqrt(dt))
     return x
 
 def fgn(hurst, n):
@@ -101,7 +102,7 @@ print_summary("IID Uniform", x, m)
 plot_boot("IID Uniform", m, x)
 
 # OU 
-for theta in [0.01, 1.2, 2]:
+for theta in [0.01, 1.5, 10]:
     x = ornstein_uhlenbeck(theta, n)
     m = bootstrap_means(x)
     label = f"OU theta={theta}"

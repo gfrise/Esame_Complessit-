@@ -21,8 +21,9 @@ def gen_t(df, n):
 
 def gen_ou(gamma, n):
     x = np.zeros(n)
+    dt = 0.1
     for t in range(1, n):
-        x[t] = x[t-1] + gamma * (0.0 - x[t-1]) + rng.normal()
+        x[t] = x[t-1] + gamma * (0.0 - x[t-1])*dt + rng.normal(0,np.sqrt(dt))
     return x
 
 def gen_fgn(H, n):
@@ -95,7 +96,7 @@ dfs = np.linspace(0.4, 20.0, 100)
 s_mean, s_std, k_mean, k_std = run_experiment(dfs, gen_t, n, B, R)
 plot_shape(dfs, s_mean, s_std, k_mean, k_std, 'Dof', 'Bootstrap mean shape — Student-t')
 
-thetas = np.linspace(0.01, 2.0, 100)
+thetas = np.linspace(0.01, 10.0, 100)
 s_mean, s_std, k_mean, k_std = run_experiment(thetas, gen_ou, n, B, R)
 plot_shape(thetas, s_mean, s_std, k_mean, k_std, 'Theta', 'Bootstrap mean shape — OU process')
 

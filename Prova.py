@@ -1,38 +1,24 @@
 import numpy as np
-import matplotlib.pyplot as plt
+from numpy.linalg import eig
 
-T, N, dt, m, s, y, taum = 10**5, 10**2, 0.1, 0.2, 0.3, 0.01, 40
+x = np.loadtxt("markov_chain.dat")
+stati = np.array(x[:,1],dtype=int) - 1
+n = 3
+trans = np.zeros((n,n))
 
-x = np.zeros((N,T))
-x[:,0] = 0.42
-for i in range(N):
-    for t in range(1,T):
-        x[i,t]=x[i,t-1]-y*dt*(x[i,t-1]-m)+s*np.random.normal(0,np.sqrt(dt))
+for t in range(len(stati)-1):
+  i = stati[t]
+  j = stati[t+1]
+  trans[i,j]+=1
 
-def acmix(x,taum):
-    N,T = x.shape
-    ac = np.zeros((N,taum+1))
+P = trans / trans.sum(axis=1, keepdims=True)
+l, w = eig(P)
 
-    for i in range(N):
-        mean = np.mean(x[i,:])
-        var = np.var(x[i,:])
+sort_l = np.sort(np.abs(l))[::-1]
 
-        for tau in range(taum+1):
-            prod = (x[i,:T-tau]-mean)*(x[i,tau:]-mean)
-            ac[i,tau] = np.mean(prod)/var
-    
-    return ac.mean(axis=0), ac.std(axis=0)
+lt, wt = eig(P.T)
+statio = wt[:,np.isclose(lt,1)].real
+statio /= np.sum(statio)
 
-taus = np.arange(0,taum+1)
-teo = np.exp(-y*dt*taus)
-acm, acs = acmix(x,taum)
-
-plt.semilogy()
-plt.errorbar(taus, acm, acs, label="reale")
-plt.plot(taus, teo, '--', label="teorico")
-plt.xlabel("lag")
-plt.ylabel("ac")
-plt.title("ac vs lag")
-plt.legend()
-plt.grid(True)
-plt.show()
+print(np.allclose(statio.T@P, statio.T))
+print(np.allclose(P.T@statio, statio))
