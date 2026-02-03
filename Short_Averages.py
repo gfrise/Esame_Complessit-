@@ -18,5 +18,5 @@ def timeavg(x,tau):
 
 def ensvag(x,tau):
     x = x - x.mean(axis=1,keepdims=True)
-    ac = np.mean(x[:,:T-tau]*x[:,tau:],axis=1)/np.var(x,axis=1)
+    ac = np.mean(x[:,:len(x)-tau]*x[:,tau:],axis=1)/np.var(x,axis=1)
     return ac.mean()
